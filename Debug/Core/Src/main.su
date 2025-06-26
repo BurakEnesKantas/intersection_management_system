@@ -1,0 +1,6 @@
+../Core/Src/main.c:63:6:Sequences_Mode	8	static
+../Core/Src/main.c:286:6:Flash_Mode	8	static
+../Core/Src/main.c:344:5:main	8	static
+../Core/Src/main.c:389:6:SystemClock_Config	88	static
+../Core/Src/main.c:430:13:MX_GPIO_Init	56	static
+../Core/Src/main.c:497:6:Error_Handler	8	static,ignoring_inline_asm

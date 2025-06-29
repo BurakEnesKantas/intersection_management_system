@@ -81,6 +81,7 @@ batı - west
 #define RX_BUFFER_SIZE 50
 
 volatile SystemMode_t current_mode = MODE_IDLE;
+SystemMode_t Reset_Mode(void);
 volatile uint8_t rx_buffer[RX_BUFFER_SIZE];
 volatile uint8_t rx_index = 0;
 volatile uint8_t cmd_ready = 0;
@@ -98,7 +99,7 @@ uint16_t transition_delay = 1500;
 uint16_t flash_delay = 250;
 char rx_data[50] = {0};
 
-volatile uint8_t uart_rx_byte;
+uint8_t uart_rx_byte;
 
 
 
@@ -138,7 +139,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void ProcessCommand(char* cmd);
 void Sequences_Mode(void);
-void Flash_Mode(void);
+void Flash_Mode(uint16_t duration_ms);
 void All_LEDs_Off(void);
 uint8_t CheckModeChange(void);
 void north_red(void);
@@ -155,21 +156,27 @@ void west_green(void);
 void west_yellow(void);
 
 
+
+
+
+
 /* Includes ------------------------------------------------------------------*/
 
 
 void ProcessCommand(char* cmd) {
-    if (strcmp(cmd, "sequence") == 0) {
+    if (strcmp(cmd, "SM") == 0) {
         current_mode = MODE_SEQUENCE;
         HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", 30, HAL_MAX_DELAY);
     }
-    else if (strcmp(cmd, "flash") == 0) {
+    else if (strcmp(cmd, "FM") == 0) {
         current_mode = MODE_FLASH;
         HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", 30, HAL_MAX_DELAY);
     }
     else if (strcmp(cmd, "reset") == 0) {
-        current_mode = MODE_RESET;
-        HAL_UART_Transmit(&huart2, (uint8_t*)"WAIT FOR RESTART...\r\n", 30, HAL_MAX_DELAY);
+    	HAL_UART_Transmit(&huart2, (uint8_t*)"WAIT FOR RESTART...\r\n", 30, HAL_MAX_DELAY);
+    	current_mode = MODE_RESET;
+        HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode Continues\r\n", 30, HAL_MAX_DELAY);
+
     }
     else if (strcmp(cmd, "stop") == 0) {
         current_mode = MODE_IDLE;
@@ -327,6 +334,23 @@ void All_LEDs_Off(void) {
 }
 
 
+SystemMode_t Reset_Mode(void)
+
+{
+	// Flash efekti göster
+
+	  	Flash_Mode(3000);
+	    All_LEDs_Off();
+	    HAL_Delay(1000);
+	    Flash_Mode(5000);
+	    HAL_Delay(1000);
+
+	    HAL_UART_Transmit(&huart2, (uint8_t*)"System Reset Complete\r\n", 22, HAL_MAX_DELAY);
+	    current_mode = MODE_SEQUENCE; // Varsayılan moda dön
+	    return current_mode;
+}
+
+
 void RunPhase(char* phase, uint16_t green_time) {
     // 1. YEŞİL AÇ (Sadece verilen fazda)
     if (strcmp(phase, "north") == 0) {
@@ -393,7 +417,7 @@ void Sequences_Mode(void) {
     	       	east_red();
     	        west_red();
     	        if(!CheckModeChange())
-    	        	for(uint32_t i = 0; i < north_delay; i += 10) {
+    	        	for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
     	        	        cmd_ready = 0;
@@ -411,7 +435,7 @@ void Sequences_Mode(void) {
     	       	east_red();
     	       	west_red();
     	        if(!CheckModeChange())
-    	        	for(uint32_t i = 0; i < north_delay; i += 10) {
+    	        	for(uint32_t i = 0; i < transition_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
     	        	        cmd_ready = 0;
@@ -428,7 +452,7 @@ void Sequences_Mode(void) {
     	      	east_red();
     	        west_red();
     	        if(!CheckModeChange())
-    	        	for(uint32_t i = 0; i < north_delay; i += 10) {
+    	        	for(uint32_t i = 0; i < south_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
     	        	        cmd_ready = 0;
@@ -445,7 +469,7 @@ void Sequences_Mode(void) {
     	       	east_red();
     	        west_red();
     	        if(!CheckModeChange())
-    	        	for(uint32_t i = 0; i < north_delay; i += 10) {
+    	        	for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
     	        	        cmd_ready = 0;
@@ -463,7 +487,7 @@ void Sequences_Mode(void) {
     	       	east_yellow();
     	       	west_red();
     	       	if(!CheckModeChange())
-    	       		for(uint32_t i = 0; i < north_delay; i += 10) {
+    	       		for(uint32_t i = 0; i < transition_delay; i += 10) {
     	       		    HAL_Delay(10);
     	       		    if(cmd_ready) {
     	       		        cmd_ready = 0;
@@ -479,7 +503,7 @@ void Sequences_Mode(void) {
     	       	east_green();
     	  		west_red();
     	       	if(!CheckModeChange())
-    	       		for(uint32_t i = 0; i < north_delay; i += 10) {
+    	       		for(uint32_t i = 0; i < east_delay; i += 10) {
     	       		    HAL_Delay(10);
     	       		    if(cmd_ready) {
     	       		        cmd_ready = 0;
@@ -495,7 +519,7 @@ void Sequences_Mode(void) {
     	       	east_yellow();
     	   		west_red();
     	   		if(!CheckModeChange())
-    	   			for(uint32_t i = 0; i < north_delay; i += 10) {
+    	   			for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
     	   			        cmd_ready = 0;
@@ -512,7 +536,7 @@ void Sequences_Mode(void) {
     	   		west_red();
     	   		west_yellow();
     	   		if(!CheckModeChange())
-    	   			for(uint32_t i = 0; i < north_delay; i += 10) {
+    	   			for(uint32_t i = 0; i < transition_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
     	   			        cmd_ready = 0;
@@ -528,7 +552,7 @@ void Sequences_Mode(void) {
     	   		east_red();
     	   		west_green();
     	   		if(!CheckModeChange())
-    	   			for(uint32_t i = 0; i < north_delay; i += 10) {
+    	   			for(uint32_t i = 0; i < west_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
     	   			        cmd_ready = 0;
@@ -544,7 +568,7 @@ void Sequences_Mode(void) {
     	   		east_red();
     	   		west_yellow();
     	   		if(!CheckModeChange())
-    	   			for(uint32_t i = 0; i < north_delay; i += 10) {
+    	   			for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
     	   			        cmd_ready = 0;
@@ -561,7 +585,7 @@ void Sequences_Mode(void) {
     	   		east_red();
     	 		west_red();
     	 		if(!CheckModeChange())
-    	 			for(uint32_t i = 0; i < north_delay; i += 10) {
+    	 			for(uint32_t i = 0; i < transition_delay; i += 10) {
     	 			    HAL_Delay(10);
     	 			    if(cmd_ready) {
     	 			        cmd_ready = 0;
@@ -575,7 +599,7 @@ void Sequences_Mode(void) {
 }
 
 
-//extern UART_HandleTypeDef huart2;
+
 
 
 uint8_t CheckModeChange(void) {
@@ -593,40 +617,19 @@ uint8_t CheckModeChange(void) {
 }
 
 
-void Flash_Mode(void) {
-    while(current_mode == MODE_FLASH) {
+void Flash_Mode(uint16_t duration_ms) {
+    uint32_t start_time = HAL_GetTick();
+    while (HAL_GetTick() - start_time < duration_ms) {
         // LED'leri yak
         HAL_GPIO_WritePin(NY_PORT, NY_PIN, GPIO_PIN_SET);
         HAL_GPIO_WritePin(WY_PORT, WY_PIN, GPIO_PIN_SET);
         HAL_GPIO_WritePin(EY_PORT, EY_PIN, GPIO_PIN_SET);
         HAL_GPIO_WritePin(SY_PORT, SY_PIN, GPIO_PIN_SET);
-        // ... diğer LED'ler
-
-        // UART kontrolü için daha fazla zaman ver
-        for(uint16_t i = 0; i < flash_delay/10; i++)
-                {
-                    if(cmd_ready)
-                    {
-                        cmd_ready = 0;
-                        ProcessCommand((char*)rx_buffer);
-                        return;
-                    }
-                    HAL_Delay(10);
-                }
+        HAL_Delay(flash_delay);
 
         // LED'leri söndür
         All_LEDs_Off();
-
-        for(uint16_t i = 0; i < flash_delay/10; i++)
-                {
-                    if(cmd_ready)
-                    {
-                        cmd_ready = 0;
-                        ProcessCommand((char*)rx_buffer);
-                        return;
-                    }
-                    HAL_Delay(10);
-                }
+        HAL_Delay(flash_delay);
     }
 }
 
@@ -739,6 +742,7 @@ int main(void)
 
 
 
+
   while (1) {
 
 
@@ -756,7 +760,7 @@ int main(void)
               Sequences_Mode();
               break;
           case MODE_FLASH:
-              Flash_Mode();
+              Flash_Mode(1);
               break;
           case MODE_MANUAL:
               // Manuel modda sadece komut bekler
@@ -767,14 +771,10 @@ int main(void)
         	  All_LEDs_Off();
         	  break;
           case MODE_RESET:
-        	  Flash_Mode();
-        	      HAL_Delay(3000);
-        	      All_LEDs_Off();
-        	      HAL_Delay(1000);
-        	      Flash_Mode();
-        	      HAL_Delay(5000);
-        	      current_mode = MODE_SEQUENCE;
-        	  break;
+              Reset_Mode();  // yeni fonksiyon
+              break;
+
+
 
 
       }

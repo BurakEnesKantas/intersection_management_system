@@ -504,7 +504,7 @@ Disassembly of section .text:
 
 const int direction_count = sizeof(directions) / sizeof(Direction);
 
-// Receive callback fonksiyonu
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
  8000424:	b580      	push	{r7, lr}
@@ -518,7 +518,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  8000432:	4293      	cmp	r3, r2
  8000434:	d131      	bne.n	800049a <HAL_UART_RxCpltCallback+0x76>
   {
-    // Yeni veri al
+    // Yeni veri alır
     if(uart_rx_byte == '\r' || uart_rx_byte == '\n')
  8000436:	4b1c      	ldr	r3, [pc, #112]	@ (80004a8 <HAL_UART_RxCpltCallback+0x84>)
  8000438:	781b      	ldrb	r3, [r3, #0]
@@ -578,7 +578,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  800048c:	5499      	strb	r1, [r3, r2]
     }
 
-    // Yeni veri beklemeye devam et
+    // Yeni veri beklemeye devam eder
     HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1);
  800048e:	4906      	ldr	r1, [pc, #24]	@ (80004a8 <HAL_UART_RxCpltCallback+0x84>)
  8000490:	4b09      	ldr	r3, [pc, #36]	@ (80004b8 <HAL_UART_RxCpltCallback+0x94>)
@@ -658,7 +658,7 @@ void ProcessCommand(char* cmd) {
  8000514:	f000 fbef 	bl	8000cf6 <ProcessCommand+0x83a>
     }
 
-	else if (strcmp(cmd, "SIG?") == 0) {  // Tam eşleşme kontrolü
+	else if (strcmp(cmd, "SIG?") == 0) {
  8000518:	4ad6      	ldr	r2, [pc, #856]	@ (8000874 <ProcessCommand+0x3b8>)
  800051a:	687b      	ldr	r3, [r7, #4]
  800051c:	0011      	movs	r1, r2
@@ -667,7 +667,6 @@ void ProcessCommand(char* cmd) {
  8000524:	1e03      	subs	r3, r0, #0
  8000526:	d000      	beq.n	800052a <ProcessCommand+0x6e>
  8000528:	e0cd      	b.n	80006c6 <ProcessCommand+0x20a>
-	    // Tüm grupların LED durumlarını döndür
 	    for (int i = 0; i < direction_count; i++) {
  800052a:	2300      	movs	r3, #0
  800052c:	1d7a      	adds	r2, r7, #5
@@ -875,7 +874,7 @@ void ProcessCommand(char* cmd) {
  80006c4:	e317      	b.n	8000cf6 <ProcessCommand+0x83a>
 	    }
 	}
-	else if (strncmp(cmd, "SIG=", 4) == 0 && strlen(cmd) > 4) {  // Uzunluk kontrolü ekleyin
+	else if (strncmp(cmd, "SIG=", 4) == 0 && strlen(cmd) > 4) {
  80006c6:	4974      	ldr	r1, [pc, #464]	@ (8000898 <ProcessCommand+0x3dc>)
  80006c8:	687b      	ldr	r3, [r7, #4]
  80006ca:	2204      	movs	r2, #4
@@ -1109,7 +1108,7 @@ void ProcessCommand(char* cmd) {
  80008ba:	1939      	adds	r1, r7, r4
  80008bc:	48c6      	ldr	r0, [pc, #792]	@ (8000bd8 <ProcessCommand+0x71c>)
  80008be:	f003 f85f 	bl	8003980 <HAL_UART_Transmit>
-	else if (strncmp(cmd, "SIG=", 4) == 0 && strlen(cmd) > 4) {  // Uzunluk kontrolü ekleyin
+	else if (strncmp(cmd, "SIG=", 4) == 0 && strlen(cmd) > 4) {
  80008c2:	e218      	b.n	8000cf6 <ProcessCommand+0x83a>
 	    } else {
 	        sprintf(msg, "Invalid group index!\r\n");
@@ -1130,7 +1129,7 @@ void ProcessCommand(char* cmd) {
  80008e2:	1939      	adds	r1, r7, r4
  80008e4:	48bc      	ldr	r0, [pc, #752]	@ (8000bd8 <ProcessCommand+0x71c>)
  80008e6:	f003 f84b 	bl	8003980 <HAL_UART_Transmit>
-	else if (strncmp(cmd, "SIG=", 4) == 0 && strlen(cmd) > 4) {  // Uzunluk kontrolü ekleyin
+	else if (strncmp(cmd, "SIG=", 4) == 0 && strlen(cmd) > 4) {
  80008ea:	e204      	b.n	8000cf6 <ProcessCommand+0x83a>
 	    }
 	}
@@ -1268,7 +1267,7 @@ void ProcessCommand(char* cmd) {
  80009d2:	4b84      	ldr	r3, [pc, #528]	@ (8000be4 <ProcessCommand+0x728>)
  80009d4:	2206      	movs	r2, #6
  80009d6:	701a      	strb	r2, [r3, #0]
-        strncpy((char*)rx_data, cmd + 6, sizeof(rx_data) - 1); // yön adını sakla
+        strncpy((char*)rx_data, cmd + 6, sizeof(rx_data) - 1);
  80009d8:	687b      	ldr	r3, [r7, #4]
  80009da:	1d99      	adds	r1, r3, #6
  80009dc:	4b8a      	ldr	r3, [pc, #552]	@ (8000c08 <ProcessCommand+0x74c>)
@@ -2180,7 +2179,7 @@ void RunPhaseWithTransition(char* target_phase) {
  80010aa:	b082      	sub	sp, #8
  80010ac:	af00      	add	r7, sp, #0
  80010ae:	6078      	str	r0, [r7, #4]
-    // 1. Önce mevcut yeşil hangi yönse, onu sarıya al
+
     if (HAL_GPIO_ReadPin(NG_PORT, NG_PIN) == GPIO_PIN_SET) {
  80010b0:	2380      	movs	r3, #128	@ 0x80
  80010b2:	009b      	lsls	r3, r3, #2
@@ -2264,7 +2263,7 @@ void RunPhaseWithTransition(char* target_phase) {
  8001148:	f7ff fdfc 	bl	8000d44 <west_red>
     }
 
-    // 2. Her ihtimale karşı tüm yönleri kırmızı yap (temizlik)
+
     north_red(); south_red(); east_red(); west_red();
  800114c:	f7ff fe34 	bl	8000db8 <north_red>
  8001150:	f7ff fe14 	bl	8000d7c <south_red>
@@ -2276,7 +2275,7 @@ void RunPhaseWithTransition(char* target_phase) {
  8001160:	0018      	movs	r0, r3
  8001162:	f001 fa11 	bl	8002588 <HAL_Delay>
 
-    // 3. Hedef yön için kırmızı + sarı yak
+
     if (strcmp(target_phase, "north") == 0) {
  8001166:	4a49      	ldr	r2, [pc, #292]	@ (800128c <RunPhaseWithTransition+0x1e4>)
  8001168:	687b      	ldr	r3, [r7, #4]
@@ -2369,13 +2368,13 @@ void RunPhaseWithTransition(char* target_phase) {
  8001210:	f001 fd09 	bl	8002c26 <HAL_GPIO_WritePin>
     }
 
-    HAL_Delay(transition_delay); // kırmızı + sarı beklemesi
+    HAL_Delay(transition_delay);
  8001214:	4b1c      	ldr	r3, [pc, #112]	@ (8001288 <RunPhaseWithTransition+0x1e0>)
  8001216:	881b      	ldrh	r3, [r3, #0]
  8001218:	0018      	movs	r0, r3
  800121a:	f001 f9b5 	bl	8002588 <HAL_Delay>
 
-    // 4. Sadece yeşil yak
+
     if (strcmp(target_phase, "north") == 0) {
  800121e:	4a1b      	ldr	r2, [pc, #108]	@ (800128c <RunPhaseWithTransition+0x1e4>)
  8001220:	687b      	ldr	r3, [r7, #4]
@@ -2520,7 +2519,7 @@ SystemMode_t Reset_Mode(void)
 {
  8001328:	b580      	push	{r7, lr}
  800132a:	af00      	add	r7, sp, #0
-	// Flash efekti göster
+
 
 	  	Flash_Mode(3000);
  800132c:	4b11      	ldr	r3, [pc, #68]	@ (8001374 <Reset_Mode+0x4c>)
@@ -2550,7 +2549,7 @@ SystemMode_t Reset_Mode(void)
  800135a:	4809      	ldr	r0, [pc, #36]	@ (8001380 <Reset_Mode+0x58>)
  800135c:	2216      	movs	r2, #22
  800135e:	f002 fb0f 	bl	8003980 <HAL_UART_Transmit>
-	    current_mode = MODE_SEQUENCE; // Varsayılan moda dön
+	    current_mode = MODE_SEQUENCE;
  8001362:	4b08      	ldr	r3, [pc, #32]	@ (8001384 <Reset_Mode+0x5c>)
  8001364:	2201      	movs	r2, #1
  8001366:	701a      	strb	r2, [r3, #0]
@@ -2580,7 +2579,7 @@ void Sequences_Mode(void) {
  800138c:	af00      	add	r7, sp, #0
     while(current_mode == MODE_SEQUENCE) {
  800138e:	e2a1      	b.n	80018d4 <Sequences_Mode+0x54c>
-    	 /* KUZEY YEŞİL */
+
     	        north_green();
  8001390:	f7ff fd84 	bl	8000e9c <north_green>
     	        south_red();
@@ -2642,7 +2641,7 @@ void Sequences_Mode(void) {
  80013f2:	d000      	beq.n	80013f6 <Sequences_Mode+0x6e>
  80013f4:	e277      	b.n	80018e6 <Sequences_Mode+0x55e>
 
-    	        /* KUZEY SARI */
+
     	        north_yellow();
  80013f6:	f7ff fdc3 	bl	8000f80 <north_yellow>
     	       	south_red();
@@ -2704,7 +2703,7 @@ void Sequences_Mode(void) {
  8001458:	d000      	beq.n	800145c <Sequences_Mode+0xd4>
  800145a:	e248      	b.n	80018ee <Sequences_Mode+0x566>
 
-    	        /* KUZEY KIRMIZI + GÜNEY SARI */
+
     	        north_red();
  800145c:	f7ff fcac 	bl	8000db8 <north_red>
     	        HAL_GPIO_WritePin(SR_PORT, SR_PIN, GPIO_PIN_SET);
@@ -2778,7 +2777,7 @@ void Sequences_Mode(void) {
  80014d6:	d000      	beq.n	80014da <Sequences_Mode+0x152>
  80014d8:	e20d      	b.n	80018f6 <Sequences_Mode+0x56e>
 
-    	        /* GÜNEY YEŞİL */
+
     	        north_red();
  80014da:	f7ff fc6d 	bl	8000db8 <north_red>
     	       	south_green();
@@ -2840,7 +2839,7 @@ void Sequences_Mode(void) {
  800153c:	d000      	beq.n	8001540 <Sequences_Mode+0x1b8>
  800153e:	e1de      	b.n	80018fe <Sequences_Mode+0x576>
 
-    	        //Güney Sarı
+
     	        north_red();
  8001540:	f7ff fc3a 	bl	8000db8 <north_red>
     	       	south_yellow();
@@ -3468,13 +3467,13 @@ void Sequences_Mode(void) {
 
 
 
-/* RunMultiPhase fonksiyonu */
+
 void RunMultiPhase(char* input) {
  8001968:	b580      	push	{r7, lr}
  800196a:	b086      	sub	sp, #24
  800196c:	af00      	add	r7, sp, #0
  800196e:	6078      	str	r0, [r7, #4]
-    // 1. Önce aktif yeşil olan yönleri sarıya çevir
+    //Mevcutta yeşil olan yönleri sarıya çevirdik
     for (int i = 0; i < direction_count; i++) {
  8001970:	2300      	movs	r3, #0
  8001972:	617b      	str	r3, [r7, #20]
@@ -3563,7 +3562,7 @@ void RunMultiPhase(char* input) {
  8001a10:	0018      	movs	r0, r3
  8001a12:	f000 fdb9 	bl	8002588 <HAL_Delay>
 
-    // 2. Tüm yönleri kırmızıya çevir
+    // Tüm yönleri kırmızıya çevirdik
     for (int i = 0; i < direction_count; i++) {
  8001a16:	2300      	movs	r3, #0
  8001a18:	613b      	str	r3, [r7, #16]
@@ -3627,7 +3626,7 @@ void RunMultiPhase(char* input) {
  8001a86:	0018      	movs	r0, r3
  8001a88:	f000 fd7e 	bl	8002588 <HAL_Delay>
 
-    // 3. Girişte belirtilen yönleri yeşil yap
+    //Belirtilen yönleri yeşil yaptık
     char* token = strtok(input, "+");
  8001a8c:	4a31      	ldr	r2, [pc, #196]	@ (8001b54 <RunMultiPhase+0x1ec>)
  8001a8e:	687b      	ldr	r3, [r7, #4]
@@ -3825,7 +3824,7 @@ void Flash_Mode(uint16_t duration_ms) {
  8001bde:	60fb      	str	r3, [r7, #12]
     while (HAL_GetTick() - start_time < duration_ms) {
  8001be0:	e026      	b.n	8001c30 <Flash_Mode+0x64>
-        // LED'leri yak
+
         HAL_GPIO_WritePin(NY_PORT, NY_PIN, GPIO_PIN_SET);
  8001be2:	4b1a      	ldr	r3, [pc, #104]	@ (8001c4c <Flash_Mode+0x80>)
  8001be4:	2201      	movs	r2, #1
@@ -3859,7 +3858,7 @@ void Flash_Mode(uint16_t duration_ms) {
  8001c1c:	0018      	movs	r0, r3
  8001c1e:	f000 fcb3 	bl	8002588 <HAL_Delay>
 
-        // LED'leri söndür
+
         All_LEDs_Off();
  8001c22:	f7ff f9e5 	bl	8000ff0 <All_LEDs_Off>
         HAL_Delay(flash_delay);
@@ -4064,7 +4063,7 @@ int main(void)
 
   while (1) {
 
-	   // Zaman aşımı kontrolü
+	   // Zaman aşımı kontrolünü sağlar
 	    if (current_mode != MODE_SEQUENCE &&
  8001d5c:	4b3d      	ldr	r3, [pc, #244]	@ (8001e54 <main+0x154>)
  8001d5e:	781b      	ldrb	r3, [r3, #0]
@@ -4092,7 +4091,7 @@ int main(void)
  8001d84:	4830      	ldr	r0, [pc, #192]	@ (8001e48 <main+0x148>)
  8001d86:	2223      	movs	r2, #35	@ 0x23
  8001d88:	f001 fdfa 	bl	8003980 <HAL_UART_Transmit>
-	        last_command_time = HAL_GetTick(); // Zamanı sıfırla
+	        last_command_time = HAL_GetTick(); // Zamanı sıfırlar
  8001d8c:	f000 fbf2 	bl	8002574 <HAL_GetTick>
  8001d90:	0002      	movs	r2, r0
  8001d92:	4b31      	ldr	r3, [pc, #196]	@ (8001e58 <main+0x158>)
@@ -4150,7 +4149,7 @@ int main(void)
         	  break;
  8001dd4:	e034      	b.n	8001e40 <main+0x140>
           case MODE_RESET:
-              Reset_Mode();  // yeni fonksiyon
+              Reset_Mode();
  8001dd6:	f7ff faa7 	bl	8001328 <Reset_Mode>
               break;
  8001dda:	e031      	b.n	8001e40 <main+0x140>

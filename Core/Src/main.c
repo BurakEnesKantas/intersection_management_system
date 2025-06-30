@@ -30,7 +30,8 @@ typedef enum
     MODE_FLASH,		//  2: Yanıp sönme modu
     MODE_MANUAL,	//  3: Manuel kontrol modu
 	MODE_RESET,		//  5: Sistem yeniden başlatılıyor
-	MODE_OFF		//  4: Bütün ıl-şıklar kapalı
+	MODE_OFF,		//  4: Bütün ıl-şıklar kapalı
+	MODE_PHASE
 } SystemMode_t;
 
 
@@ -89,7 +90,8 @@ volatile uint8_t cmd_ready = 0;
 //UART handler extern tanımı
 extern UART_HandleTypeDef huart2;
 
-
+volatile uint32_t last_command_time = 0;
+#define COMMAND_TIMEOUT 80000 // 80 saniye (ms cinsinden)
 uint16_t north_delay = 4000;
 uint16_t south_delay = 4000;
 uint16_t east_delay = 4000;
@@ -164,28 +166,50 @@ void west_yellow(void);
 
 
 void ProcessCommand(char* cmd) {
+	last_command_time = HAL_GetTick();
     if (strcmp(cmd, "SM") == 0) {
         current_mode = MODE_SEQUENCE;
         HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", 30, HAL_MAX_DELAY);
+    }
+    else if(strcmp(cmd, "MODE?") == 0 ){
+    	if (current_mode == MODE_SEQUENCE) {
+    		HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE\r\n", strlen("SEQUENCE MODE\r\n"), HAL_MAX_DELAY);
+		}
+    	else if(current_mode == MODE_FLASH) {
+    		HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE\r\n", strlen("FLASH MODE\r\n"), HAL_MAX_DELAY);
+    	}
+    	else if(current_mode == MODE_RESET) {
+       		HAL_UART_Transmit(&huart2, (uint8_t*)"RESET MODE\r\n", strlen("RESET MODE\r\n"), HAL_MAX_DELAY);
+    	}
+    	else if(current_mode == MODE_PHASE) {
+       		HAL_UART_Transmit(&huart2, (uint8_t*)"PHASE MODE\r\n", strlen("PHASE MODE\r\n"), HAL_MAX_DELAY);
+  	  	}
     }
     else if (strcmp(cmd, "FM") == 0) {
         current_mode = MODE_FLASH;
         HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", 30, HAL_MAX_DELAY);
     }
+    else if (strncmp(cmd, "phase=", 6) == 0) {
+        current_mode = MODE_PHASE;
+        strncpy((char*)rx_data, cmd + 6, sizeof(rx_data) - 1); // yön adını sakla
+        rx_data[sizeof(rx_data)-1] = '\0';
+        char msg[32];
+        sprintf(msg, "Phase: %s\r\n", rx_data);
+        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+    }
     else if (strcmp(cmd, "reset") == 0) {
-    	HAL_UART_Transmit(&huart2, (uint8_t*)"WAIT FOR RESTART...\r\n", 30, HAL_MAX_DELAY);
+    	HAL_UART_Transmit(&huart2, (uint8_t*)"WAIT FOR RESTART...\r\n", strlen("WAIT FOR RESTART...\r\n"), HAL_MAX_DELAY);
     	current_mode = MODE_RESET;
-        HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode Continues\r\n", 30, HAL_MAX_DELAY);
-
+        HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode Continues\r\n", strlen("Sequence Mode Continues\r\n"), HAL_MAX_DELAY);
     }
     else if (strcmp(cmd, "stop") == 0) {
         current_mode = MODE_IDLE;
-        HAL_UART_Transmit(&huart2, (uint8_t*)"ALL MODES STOPPED\r\n", 30, HAL_MAX_DELAY);
+        HAL_UART_Transmit(&huart2, (uint8_t*)"ALL MODES STOPPED\r\n", strlen("ALL MODES STOPPED\r\n"), HAL_MAX_DELAY);
     }
     else if (strcmp(cmd, "off") == 0)
     {
     	current_mode = MODE_OFF;
-    	HAL_UART_Transmit(&huart2, (uint8_t*)"ALL LEDs OFF\r\n", 30, HAL_MAX_DELAY);
+    	HAL_UART_Transmit(&huart2, (uint8_t*)"ALL LEDs OFF\r\n", strlen("ALL LEDs OFF\r\n"), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "south=", 6) == 0) {
         south_delay = atoi(cmd + 6);
@@ -334,6 +358,71 @@ void All_LEDs_Off(void) {
 }
 
 
+void RunPhaseWithTransition(char* target_phase) {
+    // 1. Önce mevcut yeşil hangi yönse, onu sarıya al
+    if (HAL_GPIO_ReadPin(NG_PORT, NG_PIN) == GPIO_PIN_SET) {
+        north_yellow();
+        HAL_Delay(yellow_delay);
+        north_red();
+    }
+    else if (HAL_GPIO_ReadPin(SG_PORT, SG_PIN) == GPIO_PIN_SET) {
+        south_yellow();
+        HAL_Delay(yellow_delay);
+        south_red();
+    }
+    else if (HAL_GPIO_ReadPin(EG_PORT, EG_PIN) == GPIO_PIN_SET) {
+        east_yellow();
+        HAL_Delay(yellow_delay);
+        east_red();
+    }
+    else if (HAL_GPIO_ReadPin(WG_PORT, WG_PIN) == GPIO_PIN_SET) {
+        west_yellow();
+        HAL_Delay(yellow_delay);
+        west_red();
+    }
+
+    // 2. Her ihtimale karşı tüm yönleri kırmızı yap (temizlik)
+    north_red(); south_red(); east_red(); west_red();
+    HAL_Delay(transition_delay); // kırmızıya geçiş beklemesi
+
+    // 3. Hedef yön için kırmızı + sarı yak
+    if (strcmp(target_phase, "north") == 0) {
+    	HAL_GPIO_WritePin(NR_PORT, NR_PIN, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(NY_PORT, NY_PIN, GPIO_PIN_SET);
+    }
+    else if (strcmp(target_phase, "south") == 0) {
+    	HAL_GPIO_WritePin(SR_PORT, SR_PIN, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(SY_PORT, SY_PIN, GPIO_PIN_SET);
+    }
+    else if (strcmp(target_phase, "east") == 0) {
+    	HAL_GPIO_WritePin(ER_PORT, ER_PIN, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(EY_PORT, EY_PIN, GPIO_PIN_SET);
+    }
+    else if (strcmp(target_phase, "west") == 0) {
+    	HAL_GPIO_WritePin(WR_PORT, WR_PIN, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(WY_PORT, WY_PIN, GPIO_PIN_SET);
+    }
+
+    HAL_Delay(transition_delay); // kırmızı + sarı beklemesi
+
+    // 4. Sadece yeşil yak
+    if (strcmp(target_phase, "north") == 0) {
+        north_green();
+    }
+    else if (strcmp(target_phase, "south") == 0) {
+        south_green();
+    }
+    else if (strcmp(target_phase, "east") == 0) {
+        east_green();
+    }
+    else if (strcmp(target_phase, "west") == 0) {
+        west_green();
+    }
+}
+
+
+
+
 SystemMode_t Reset_Mode(void)
 
 {
@@ -366,25 +455,39 @@ void RunPhase(char* phase, uint16_t green_time) {
     if(!CheckModeChange()) HAL_Delay(green_time);
     if(current_mode != MODE_SEQUENCE) return;
 
-    // 2. SARI
-    if (strcmp(phase, "north") == 0) north_yellow();
-    else if (strcmp(phase, "south") == 0) south_yellow();
-    else if (strcmp(phase, "east") == 0) east_yellow();
-    else if (strcmp(phase, "west") == 0) west_yellow();
+    // 2. SARI + KIRMIZI (Önceki fazın kırmızısı ile birlikte)
+    if (strcmp(phase, "north") == 0) {
+        north_yellow(); south_red(); east_red(); west_red();
+    } else if (strcmp(phase, "south") == 0) {
+        north_red(); south_yellow(); east_red(); west_red();
+    } else if (strcmp(phase, "east") == 0) {
+        north_red(); south_red(); east_yellow(); west_red();
+    } else if (strcmp(phase, "west") == 0) {
+        north_red(); south_red(); east_red(); west_yellow();
+    }
 
     if(!CheckModeChange()) HAL_Delay(yellow_delay);
     if(current_mode != MODE_SEQUENCE) return;
 
-    // 3. KIRMIZI
+    // 3. TÜM KIRMIZI
     north_red(); south_red(); east_red(); west_red();
     if(!CheckModeChange()) HAL_Delay(transition_delay);
     if(current_mode != MODE_SEQUENCE) return;
 
-    // 4. KIRMIZI + SARI (Gelecek faza hazırlık için)
-    if (strcmp(phase, "north") == 0) north_yellow();
-    else if (strcmp(phase, "south") == 0) south_yellow();
-    else if (strcmp(phase, "east") == 0) east_yellow();
-    else if (strcmp(phase, "west") == 0) west_yellow();
+    // 4. SONRAKİ FAZ İÇİN KIRMIZI + SARI
+    if (strcmp(phase, "north") == 0) {
+        // Sonraki faz güney olduğu için güney sarı
+        south_yellow();
+    } else if (strcmp(phase, "south") == 0) {
+        // Sonraki faz doğu olduğu için doğu sarı
+        east_yellow();
+    } else if (strcmp(phase, "east") == 0) {
+        // Sonraki faz batı olduğu için batı sarı
+        west_yellow();
+    } else if (strcmp(phase, "west") == 0) {
+        // Sonraki faz kuzey olduğu için kuzey sarı
+        north_yellow();
+    }
 
     if(!CheckModeChange()) HAL_Delay(transition_delay);
     if(current_mode != MODE_SEQUENCE) return;
@@ -430,8 +533,8 @@ void Sequences_Mode(void) {
 
     	        /* KUZEY KIRMIZI + GÜNEY SARI */
     	        north_red();
-    	        south_red();
-    	       	south_yellow();
+    	        HAL_GPIO_WritePin(SR_PORT, SR_PIN, GPIO_PIN_SET);
+    	        HAL_GPIO_WritePin(SY_PORT, SY_PIN, GPIO_PIN_SET);
     	       	east_red();
     	       	west_red();
     	        if(!CheckModeChange())
@@ -483,8 +586,8 @@ void Sequences_Mode(void) {
 
     	        north_red();
     	        south_red();
-    	       	east_red();
-    	       	east_yellow();
+    	        HAL_GPIO_WritePin(ER_PORT, ER_PIN, GPIO_PIN_SET);
+    	        HAL_GPIO_WritePin(EY_PORT, EY_PIN, GPIO_PIN_SET);
     	       	west_red();
     	       	if(!CheckModeChange())
     	       		for(uint32_t i = 0; i < transition_delay; i += 10) {
@@ -533,8 +636,8 @@ void Sequences_Mode(void) {
     	   		north_red();
     			south_red();
     	   		east_red();
-    	   		west_red();
-    	   		west_yellow();
+    	   		HAL_GPIO_WritePin(WR_PORT, WR_PIN, GPIO_PIN_SET);
+    	   		HAL_GPIO_WritePin(WY_PORT, WY_PIN, GPIO_PIN_SET);
     	   		if(!CheckModeChange())
     	   			for(uint32_t i = 0; i < transition_delay; i += 10) {
     	   			    HAL_Delay(10);
@@ -579,8 +682,8 @@ void Sequences_Mode(void) {
 
     	   		if(current_mode != MODE_SEQUENCE) return;
 
-    	   		north_red();
-    	   		north_yellow();
+    	   		HAL_GPIO_WritePin(NR_PORT, NR_PIN, GPIO_PIN_SET);
+    	   		HAL_GPIO_WritePin(NY_PORT, NY_PIN, GPIO_PIN_SET);
     	   		south_red();
     	   		east_red();
     	 		west_red();
@@ -745,7 +848,13 @@ int main(void)
 
   while (1) {
 
-
+	   // Zaman aşımı kontrolü
+	    if (current_mode != MODE_SEQUENCE &&
+	        (HAL_GetTick() - last_command_time) > COMMAND_TIMEOUT) {
+	        current_mode = MODE_SEQUENCE;
+	        HAL_UART_Transmit(&huart2, (uint8_t*)"Timeout, returning to SEQUENCE MODE\r\n", 35, HAL_MAX_DELAY);
+	        last_command_time = HAL_GetTick(); // Zamanı sıfırla
+	    }
       if(cmd_ready)
               {
                   cmd_ready = 0;
@@ -773,6 +882,19 @@ int main(void)
           case MODE_RESET:
               Reset_Mode();  // yeni fonksiyon
               break;
+          case MODE_PHASE:
+              RunPhaseWithTransition((char*)rx_data);  // hangi yön saklandıysa onu çalıştır
+              for (uint32_t i = 0; i < 10000; i += 10) // 10 saniye bekle
+              {
+                  HAL_Delay(10);
+                  if (cmd_ready) {
+                      cmd_ready = 0;
+                      ProcessCommand((char*)rx_buffer);
+                      if (current_mode != MODE_PHASE) break;
+                  }
+              }
+              break;
+
 
 
 

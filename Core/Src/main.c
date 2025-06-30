@@ -35,6 +35,14 @@ typedef enum
 } SystemMode_t;
 
 
+
+
+
+
+
+
+
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -103,7 +111,24 @@ char rx_data[50] = {0};
 
 uint8_t uart_rx_byte;
 
+typedef struct {
+    const char* name;
+    GPIO_TypeDef* green_port;
+    uint16_t green_pin;
+    GPIO_TypeDef* yellow_port;
+    uint16_t yellow_pin;
+    GPIO_TypeDef* red_port;
+    uint16_t red_pin;
+} Direction;
 
+Direction directions[] = {
+    {"north", NG_PORT, NG_PIN, NY_PORT, NY_PIN, NR_PORT, NR_PIN},
+    {"south", SG_PORT, SG_PIN, SY_PORT, SY_PIN, SR_PORT, SR_PIN},
+    {"east",  EG_PORT, EG_PIN, EY_PORT, EY_PIN, ER_PORT, ER_PIN},
+    {"west",  WG_PORT, WG_PIN, WY_PORT, WY_PIN, WR_PORT, WR_PIN},
+};
+
+const int direction_count = sizeof(directions) / sizeof(Direction);
 
 // Receive callback fonksiyonu
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -166,25 +191,79 @@ void west_yellow(void);
 
 
 void ProcessCommand(char* cmd) {
+	char msg[128];  // UART'a yazılacak mesajlar için buffer
 	last_command_time = HAL_GetTick();
-    if (strcmp(cmd, "SM") == 0) {
+	if (strcmp(cmd, "info") == 0) {
+		HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=north/south/east/west\r\n"
+				"Restart = reset\r\nSignal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off" ,
+				strlen("Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=north/south/east/west\r\nRestart = reset\r\n"
+						"Signal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off" ), HAL_MAX_DELAY);
+		}
+	else if (strcmp(cmd, "SM") == 0) {
         current_mode = MODE_SEQUENCE;
         HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", 30, HAL_MAX_DELAY);
     }
+
+	else if (strcmp(cmd, "SIG?") == 0) {  // Tam eşleşme kontrolü
+	    // Tüm grupların LED durumlarını döndür
+	    for (int i = 0; i < direction_count; i++) {
+	        sprintf(msg, "Group %d (%s):\r\n", i + 1, directions[i].name);
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        sprintf(msg, "R = %s\r\n", HAL_GPIO_ReadPin(directions[i].red_port, directions[i].red_pin) == GPIO_PIN_SET ? "High" : "Low");
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        sprintf(msg, "Y = %s\r\n", HAL_GPIO_ReadPin(directions[i].yellow_port, directions[i].yellow_pin) == GPIO_PIN_SET ? "High" : "Low");
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        sprintf(msg, "G = %s\r\n", HAL_GPIO_ReadPin(directions[i].green_port, directions[i].green_pin) == GPIO_PIN_SET ? "High" : "Low");
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        HAL_UART_Transmit(&huart2, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
+	    }
+	}
+	else if (strncmp(cmd, "SIG=", 4) == 0 && strlen(cmd) > 4) {  // Uzunluk kontrolü ekleyin
+	    int groupIndex = atoi(&cmd[4]) - 1;
+
+	    if (groupIndex >= 0 && groupIndex < direction_count) {
+	        sprintf(msg, "Group %d (%s):\r\n", groupIndex + 1, directions[groupIndex].name);
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        sprintf(msg, "R = %s\r\n", HAL_GPIO_ReadPin(directions[groupIndex].red_port, directions[groupIndex].red_pin) == GPIO_PIN_SET ? "High" : "Low");
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        sprintf(msg, "Y = %s\r\n", HAL_GPIO_ReadPin(directions[groupIndex].yellow_port, directions[groupIndex].yellow_pin) == GPIO_PIN_SET ? "High" : "Low");
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
+	        sprintf(msg, "G = %s\r\n", HAL_GPIO_ReadPin(directions[groupIndex].green_port, directions[groupIndex].green_pin) == GPIO_PIN_SET ? "High" : "Low");
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	    } else {
+	        sprintf(msg, "Invalid group index!\r\n");
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	    }
+	}
+
+
     else if(strcmp(cmd, "MODE?") == 0 ){
     	if (current_mode == MODE_SEQUENCE) {
     		HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE\r\n", strlen("SEQUENCE MODE\r\n"), HAL_MAX_DELAY);
 		}
-    	else if(current_mode == MODE_FLASH) {
+   	else if(current_mode == MODE_FLASH) {
     		HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE\r\n", strlen("FLASH MODE\r\n"), HAL_MAX_DELAY);
     	}
-    	else if(current_mode == MODE_RESET) {
+  	else if(current_mode == MODE_RESET) {
        		HAL_UART_Transmit(&huart2, (uint8_t*)"RESET MODE\r\n", strlen("RESET MODE\r\n"), HAL_MAX_DELAY);
     	}
-    	else if(current_mode == MODE_PHASE) {
+    else if(current_mode == MODE_PHASE) {
        		HAL_UART_Transmit(&huart2, (uint8_t*)"PHASE MODE\r\n", strlen("PHASE MODE\r\n"), HAL_MAX_DELAY);
   	  	}
     }
+    else if(strcmp(cmd, "active?") == 0){
+        char actives[64];
+        GetActiveGreenDirections(actives, sizeof(actives));
+        HAL_UART_Transmit(&huart2, (uint8_t*)actives, strlen(actives), HAL_MAX_DELAY);
+    }
+
     else if (strcmp(cmd, "FM") == 0) {
         current_mode = MODE_FLASH;
         HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", 30, HAL_MAX_DELAY);
@@ -193,7 +272,6 @@ void ProcessCommand(char* cmd) {
         current_mode = MODE_PHASE;
         strncpy((char*)rx_data, cmd + 6, sizeof(rx_data) - 1); // yön adını sakla
         rx_data[sizeof(rx_data)-1] = '\0';
-        char msg[32];
         sprintf(msg, "Phase: %s\r\n", rx_data);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
@@ -213,44 +291,38 @@ void ProcessCommand(char* cmd) {
     }
     else if (strncmp(cmd, "south=", 6) == 0) {
         south_delay = atoi(cmd + 6);
-        char msg[32];
         sprintf(msg, "South delay set: %dms\r\n", south_delay);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "north=", 6) == 0) {
         north_delay = atoi(cmd + 6);
-        char msg[32];
         sprintf(msg, "North delay set: %dms\r\n", north_delay);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "east=", 5) == 0) {
         east_delay = atoi(cmd + 5);
-        char msg[32];
         sprintf(msg, "East delay set: %dms\r\n", east_delay);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "west=", 5) == 0) {
         west_delay = atoi(cmd + 5);
-        char msg[32];
         sprintf(msg, "West delay set: %dms\r\n", west_delay);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "yellow=", 7) == 0) {
         yellow_delay = atoi(cmd + 7);
-        char msg[32];
         sprintf(msg, "Yellow delay set: %dms\r\n", yellow_delay);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "transition=", 11) == 0) {
         transition_delay = atoi(cmd + 11);
-        char msg[40];
         sprintf(msg, "Transition delay set: %dms\r\n", transition_delay);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
 
-    char debug_msg[50];
-    sprintf(debug_msg, "CMD: %s\r\n", cmd);
-    HAL_UART_Transmit(&huart2, (uint8_t*)debug_msg, strlen(debug_msg), HAL_MAX_DELAY);
+  	  char debug_msg[50];
+      sprintf(debug_msg, "\r\nCMD: %s\r\n", cmd);
+      HAL_UART_Transmit(&huart2, (uint8_t*)debug_msg, strlen(debug_msg), HAL_MAX_DELAY);
 
 }
 
@@ -419,6 +491,17 @@ void RunPhaseWithTransition(char* target_phase) {
         west_green();
     }
 }
+
+
+
+const char* GetCurrentGreenPhase(void) {
+    if (HAL_GPIO_ReadPin(NG_PORT, NG_PIN) == GPIO_PIN_SET) return "north";
+    if (HAL_GPIO_ReadPin(SG_PORT, SG_PIN) == GPIO_PIN_SET) return "south";
+    if (HAL_GPIO_ReadPin(EG_PORT, EG_PIN) == GPIO_PIN_SET) return "east";
+    if (HAL_GPIO_ReadPin(WG_PORT, WG_PIN) == GPIO_PIN_SET) return "west";
+    return "none";
+}
+
 
 
 
@@ -704,6 +787,41 @@ void Sequences_Mode(void) {
 
 
 
+/* RunMultiPhase fonksiyonu */
+void RunMultiPhase(char* input) {
+    // 1. Önce aktif yeşil olan yönleri sarıya çevir
+    for (int i = 0; i < direction_count; i++) {
+        if (HAL_GPIO_ReadPin(directions[i].green_port, directions[i].green_pin) == GPIO_PIN_SET) {
+            HAL_GPIO_WritePin(directions[i].green_port, directions[i].green_pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(directions[i].yellow_port, directions[i].yellow_pin, GPIO_PIN_SET);
+        }
+    }
+    HAL_Delay(yellow_delay);
+
+    // 2. Tüm yönleri kırmızıya çevir
+    for (int i = 0; i < direction_count; i++) {
+        HAL_GPIO_WritePin(directions[i].yellow_port, directions[i].yellow_pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(directions[i].red_port, directions[i].red_pin, GPIO_PIN_SET);
+    }
+    HAL_Delay(transition_delay);
+
+    // 3. Girişte belirtilen yönleri yeşil yap
+    char* token = strtok(input, "+");
+    while (token != NULL) {
+        for (int i = 0; i < direction_count; i++) {
+            if (strcmp(token, directions[i].name) == 0) {
+                HAL_GPIO_WritePin(directions[i].red_port, directions[i].red_pin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(directions[i].green_port, directions[i].green_pin, GPIO_PIN_SET);
+                break;
+            }
+        }
+        token = strtok(NULL, "+");
+    }
+}
+
+
+
+
 
 uint8_t CheckModeChange(void) {
     uint8_t temp;
@@ -743,6 +861,14 @@ void Flash_Mode(uint16_t duration_ms) {
 /* USER CODE BEGIN PTD */
 
 /* USER CODE BEGIN PV */
+
+/* USER CODE BEGIN PV */
+/* Yön yapısı ve global değişkenler */
+
+
+/* USER CODE END PV */
+
+
 /* USER CODE BEGIN PV */
 
 
@@ -776,9 +902,14 @@ UART_HandleTypeDef huart2;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
- void MX_GPIO_Init(void);
- void MX_USART2_UART_Init(void);
+void MX_GPIO_Init(void);
+void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
+
+
+void GetActiveGreenDirections(char* result, size_t result_size);
+void RunMultiPhase(char* input);
+
 
 /* USER CODE BEGIN PFP */
 
@@ -788,7 +919,16 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+/* GetActiveGreenDirections fonksiyonu */
+void GetActiveGreenDirections(char* result, size_t result_size) {
+    result[0] = '\0'; // Boşalt
+    for (int i = 0; i < direction_count; i++) {
+        if (HAL_GPIO_ReadPin(directions[i].green_port, directions[i].green_pin) == GPIO_PIN_SET) {
+            strncat(result, directions[i].name, result_size - strlen(result) - 1);
+            strncat(result, " ", result_size - strlen(result) - 1);
+        }
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -844,7 +984,10 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&uart_rx_byte, 1);
 
 
-
+  const char* activePhase = GetCurrentGreenPhase();
+  char msg[32];
+  sprintf(msg, "Aktif faz: %s\r\n", activePhase);
+  HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 
   while (1) {
 
@@ -883,9 +1026,12 @@ int main(void)
               Reset_Mode();  // yeni fonksiyon
               break;
           case MODE_PHASE:
-              RunPhaseWithTransition((char*)rx_data);  // hangi yön saklandıysa onu çalıştır
-              for (uint32_t i = 0; i < 10000; i += 10) // 10 saniye bekle
-              {
+              if (strchr((char*)rx_data, '+')) {
+                  RunMultiPhase((char*)rx_data);
+              } else {
+                  RunPhaseWithTransition((char*)rx_data);
+              }
+              for (uint32_t i = 0; i < 10000; i += 10) {
                   HAL_Delay(10);
                   if (cmd_ready) {
                       cmd_ready = 0;
@@ -894,6 +1040,7 @@ int main(void)
                   }
               }
               break;
+
 
 
 

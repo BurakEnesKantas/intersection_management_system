@@ -25,5 +25,5 @@
 ../Core/Src/main.c:937:5:main	48	static
 ../Core/Src/main.c:1058:6:SystemClock_Config	88	static
 ../Core/Src/main.c:1099:6:MX_USART2_UART_Init	8	static
-../Core/Src/main.c:1151:7:MX_GPIO_Init	56	static
-../Core/Src/main.c:1222:6:Error_Handler	8	static,ignoring_inline_asm
+../Core/Src/main.c:1157:7:MX_GPIO_Init	56	static
+../Core/Src/main.c:1228:6:Error_Handler	8	static,ignoring_inline_asm

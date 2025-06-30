@@ -131,7 +131,7 @@ Direction directions[] = {
 const int direction_count = sizeof(directions) / sizeof(Direction);
 
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //her byte(veri) geldiğinde kesme tetiklenir
 {
   if(huart->Instance == USART2)
   {
@@ -150,8 +150,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       rx_buffer[rx_index++] = uart_rx_byte;
     }
 
-    // Yeni veri beklemeye devam eder
-    HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1);
+
+    HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1); //1byte almak için kesme ayarıdır
   }
 }
 
@@ -979,7 +979,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 
-  /* main fonksiyonundaki çağrıyı değiştirin */
+
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&uart_rx_byte, 1);
 
 
@@ -1117,7 +1117,13 @@ void MX_USART2_UART_Init(void)
   huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
   huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  //Interrup ayarları
+
+  /*Interrup ayarlarını burda yaptık
+   HAL_UART_Receive_IT(...) olan kısım 1byte almak için kesme ayarıdır
+
+
+
+    */
   HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(USART2_IRQn);
 

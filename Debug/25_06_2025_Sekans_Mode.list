@@ -505,7 +505,7 @@ Disassembly of section .text:
 const int direction_count = sizeof(directions) / sizeof(Direction);
 
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //her byte(veri) geldiğinde kesme tetiklenir
 {
  8000424:	b580      	push	{r7, lr}
  8000426:	b082      	sub	sp, #8
@@ -578,8 +578,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  800048c:	5499      	strb	r1, [r3, r2]
     }
 
-    // Yeni veri beklemeye devam eder
-    HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1);
+
+    HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1); //1byte almak için kesme ayarıdır
  800048e:	4906      	ldr	r1, [pc, #24]	@ (80004a8 <HAL_UART_RxCpltCallback+0x84>)
  8000490:	4b09      	ldr	r3, [pc, #36]	@ (80004b8 <HAL_UART_RxCpltCallback+0x94>)
  8000492:	2201      	movs	r2, #1
@@ -4029,7 +4029,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 
-  /* main fonksiyonundaki çağrıyı değiştirin */
+
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&uart_rx_byte, 1);
  8001d24:	4949      	ldr	r1, [pc, #292]	@ (8001e4c <main+0x14c>)
  8001d26:	4b48      	ldr	r3, [pc, #288]	@ (8001e48 <main+0x148>)
@@ -4399,7 +4399,11 @@ void MX_USART2_UART_Init(void)
  8001f4a:	4b18      	ldr	r3, [pc, #96]	@ (8001fac <MX_USART2_UART_Init+0xa4>)
  8001f4c:	2200      	movs	r2, #0
  8001f4e:	629a      	str	r2, [r3, #40]	@ 0x28
-  //Interrup ayarları
+   HAL_UART_Receive_IT(...) olan kısım 1byte almak için kesme ayarıdır
+
+
+
+    */
   HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
  8001f50:	2200      	movs	r2, #0
  8001f52:	2100      	movs	r1, #0

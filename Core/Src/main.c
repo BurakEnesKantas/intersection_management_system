@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "rtc.h"
+
+
+
 
 
 typedef enum
@@ -185,14 +189,100 @@ void west_yellow(void);
 void ProcessCommand(char* cmd) {
 	char msg[128];  // UART'a yazılacak mesajlar için buffer
 	last_command_time = HAL_GetTick();
-	if (strcmp(cmd, "info") == 0) {
-		HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=1/2/3/4\r\n"
-				"Restart = RST\r\nSignal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off\r\n"
-				"Mode Info = MODE?\r\nPhase Info = PHASE?" ,
-				strlen("Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=1/2/3/4\r\nRestart = RST\r\n"
-						"Signal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off\r\n"
-						"Mode Info = MODE?\r\nPhase Info = PHASE?" ), HAL_MAX_DELAY);
-		}
+
+	if (strcmp(cmd, "time") == 0 || strcmp(cmd, "TIME") == 0) {
+	        RTC_TimeTypeDef sTime;
+	        RTC_DateTypeDef sDate;
+
+	        HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	        HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+	        snprintf(msg, sizeof(msg), "Current Time: %02d:%02d:%02d\r\nCurrent Date: %02d/%02d/%04d\r\n",
+	                sTime.Hours, sTime.Minutes, sTime.Seconds,
+	                sDate.Date, sDate.Month, sDate.Year + 2000);
+
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	    }
+	    else if (strncmp(cmd, "settime=", 8) == 0) {
+	        // Format: settime=HH:MM:SS
+	        int hours, minutes, seconds;
+	        if (sscanf(cmd + 8, "%d:%d:%d", &hours, &minutes, &seconds) == 3) {
+	            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && seconds >= 0 && seconds <= 59) {
+	                RTC_TimeTypeDef sTime = {0};
+	                sTime.Hours = hours;
+	                sTime.Minutes = minutes;
+	                sTime.Seconds = seconds;
+	                sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	                sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+
+	                if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) == HAL_OK) {
+	                    snprintf(msg, sizeof(msg), "Time set to: %02d:%02d:%02d\r\n", hours, minutes, seconds);
+	                } else {
+	                    snprintf(msg, sizeof(msg), "Error setting time!\r\n");
+	                }
+	            } else {
+	                snprintf(msg, sizeof(msg), "Invalid time format! Use HH:MM:SS (24h format)\r\n");
+	            }
+	        } else {
+	            snprintf(msg, sizeof(msg), "Invalid format! Use: settime=HH:MM:SS\r\n");
+	        }
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	    }
+	    else if (strncmp(cmd, "setdate=", 8) == 0) {
+	        // Format: setdate=DD/MM/YYYY
+	        int day, month, year;
+	        if (sscanf(cmd + 8, "%d/%d/%d", &day, &month, &year) == 3) {
+	            if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2000 && year <= 2099) {
+	                RTC_DateTypeDef sDate = {0};
+	                sDate.Date = day;
+	                sDate.Month = month;
+	                sDate.Year = year - 2000; // RTC 20xx formatında çalışır
+	                sDate.WeekDay = RTC_WEEKDAY_MONDAY; // Basit çözüm, haftanın gününü hesaplayabilirsiniz
+
+	                if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) == HAL_OK) {
+	                    snprintf(msg, sizeof(msg), "Date set to: %02d/%02d/%04d\r\n", day, month, year);
+	                } else {
+	                    snprintf(msg, sizeof(msg), "Error setting date!\r\n");
+	                }
+	            } else {
+	                snprintf(msg, sizeof(msg), "Invalid date values!\r\n");
+	            }
+	        } else {
+	            snprintf(msg, sizeof(msg), "Invalid format! Use: setdate=DD/MM/YYYY\r\n");
+	        }
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	    }
+	    else if (strcmp(cmd, "info") == 0) {
+	        RTC_TimeTypeDef sTime;
+	        RTC_DateTypeDef sDate;
+
+	        HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	        HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+	        snprintf(msg, sizeof(msg),
+	            "=== TRAFFIC LIGHT CONTROLLER INFO ===\r\n"
+	            "Current Time: %02d:%02d:%02d\r\n"
+	            "Current Date: %02d/%02d/%04d\r\n"
+	            "=====================================\r\n"
+	            "Available Commands:\r\n"
+	            "time - Show current time\r\n"
+	            "settime=HH:MM:SS - Set time\r\n"
+	            "setdate=DD/MM/YYYY - Set date\r\n"
+	            "SM - Sequence Mode\r\n"
+	            "FM - Flash Mode\r\n"
+	            "phase=1/2/3/4 - Phase Mode\r\n"
+	            "RST - Restart\r\n"
+	            "SIG? - Signal Group Info\r\n"
+	            "SIG=X - Signal Info\r\n"
+	            "stop - Stop All System\r\n"
+	            "off - Close All LEDs\r\n"
+	            "MODE? - Mode Info\r\n"
+	            "PHASE? - Phase Info\r\n",
+	            sTime.Hours, sTime.Minutes, sTime.Seconds,
+	            sDate.Date, sDate.Month, sDate.Year + 2000);
+
+	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	    }
 	else if (strcmp(cmd, "SM") == 0) {
         current_mode = MODE_SEQUENCE;
         HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", strlen("SEQUENCE MODE STARTED\r\n"), HAL_MAX_DELAY);
@@ -960,7 +1050,7 @@ void Flash_Mode(uint16_t duration_ms) {
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-RTC_HandleTypeDef hrtc;
+extern RTC_HandleTypeDef hrtc;
 
 UART_HandleTypeDef huart2;
 
@@ -976,7 +1066,7 @@ char buffer [100];
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_RTC_Init(void);
+
 /* USER CODE BEGIN PFP */
 
 
@@ -1036,8 +1126,7 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
-  RTC_TimeTypeDef sTime;
-  RTC_DateTypeDef sDate;
+
 
   HAL_UART_Transmit(&huart2, (uint8_t*)"Hazir\r\n", strlen("Hazir\r\n"), HAL_MAX_DELAY);
 
@@ -1062,19 +1151,6 @@ int main(void)
   HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);*/
 
   while (1) {
-
-
-	  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-	  	  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-
-	  	  snprintf(buffer, sizeof(buffer), "Time: %02d:%02d:%02d, Date: %02d/%02d/%02d\r\n",
-	  	          sTime.Hours, sTime.Minutes, sTime.Seconds,
-	  	          sDate.Date, sDate.Month, sDate.Year + 2000);
-
-	  	  HAL_UART_Transmit(&huart2, (uint8_t*)buffer, strlen(buffer), HAL_MAX_DELAY);
-
-	  	  HAL_Delay(1000);
-
 
 
 	  // Zaman aşımı kontrolünü sağlar

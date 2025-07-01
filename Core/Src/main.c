@@ -35,14 +35,6 @@ typedef enum
 } SystemMode_t;
 
 
-
-
-
-
-
-
-
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -938,10 +930,13 @@ void Flash_Mode(uint16_t duration_ms) {
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+#define ESC "\033"
+#define CLEAR_SCREEN ESC "[2J"
+#define CURSOR_HOME ESC "[2H"
 /* USER CODE BEGIN PV */
 
 /* USER CODE BEGIN PV */
-/* Yön yapısı ve global değişkenler */
+
 
 
 /* USER CODE END PV */
@@ -970,20 +965,35 @@ void Flash_Mode(uint16_t duration_ms) {
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+RTC_HandleTypeDef hrtc;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
+/* USER CODE BEGIN PV */
+/* Yön yapısı ve global değişkenler */
 
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void MX_GPIO_Init(void);
-void MX_USART2_UART_Init(void);
+static void MX_GPIO_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 
+void Set_RTC_Time(void);
+void Set_RTC_Date(void);
+void Set_RTC_Alarm(void);
+void Show_Menu(void);
+void Print_Time(void);
+void Print_Date(void);
+void Print_Alarm(void);
+void HAL_RTC_AlarmEventCallback(RTC_HandleTypeDef *hrtc);
+void UART_Receive(uint8_t *data, uint16_t size);
+void Clear_Screen(void);
 
 //void GetActiveGreenDirections(char* result, size_t result_size);
 void RunMultiPhase(char* input);
@@ -993,10 +1003,120 @@ void RunMultiPhase(char* input);
 
 /* USER CODE END PFP */
 
-/* USER CODE END PFP */
-
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void Clear_Screen(void)
+{
+	HAL_UART_Transmit(&huart2, (uint8_t*)CLEAR_SCREEN, strlen(CLEAR_SCREEN), HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, (uint8_t*)CURSOR_HOME, strlen(CURSOR_HOME), HAL_MAX_DELAY);
+}
+
+
+
+
+void UART_Receive(uint8_t *buffer, uint16_t size)
+{
+	HAL_UART_Receive(&huart2, buffer, size, HAL_MAX_DELAY);
+	buffer[size] = '\0';
+}
+
+void Set_RTC_Time(void)
+{
+	RTC_TimeTypeDef sTime = {0};
+	uint8_t buffer[3];
+
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Enter Hours (00-23):", 21, HAL_MAX_DELAY);
+	UART_Receive(buffer, 2);
+	sTime.Hours = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Enter Minutes (00-59):", 24, HAL_MAX_DELAY);
+	UART_Receive(buffer, 2);
+	sTime.Minutes = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Enter Seconds (00-59):", 24, HAL_MAX_DELAY);
+	UART_Receive(buffer, 2);
+	sTime.Seconds = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+
+	sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+
+	if(HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	HAL_UART_Transmit(&huart2, (uint8_t*)"\n\rTime is set!\n\r", 16, HAL_MAX_DELAY);
+}
+
+void Set_RTC_Date(void)
+{
+	RTC_DateTypeDef sDate = {0};
+	uint8_t buffer[3];
+
+
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Enter Year (00-99):", 20, HAL_MAX_DELAY);
+	UART_Receive(buffer, 2);
+	sDate.Year = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Enter Month (01-12):", 21, HAL_MAX_DELAY);
+	UART_Receive(buffer, 2);
+	sDate.Month = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Enter Date (01-31):", 21, HAL_MAX_DELAY);
+	UART_Receive(buffer, 2);
+	sDate.Date = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Enter WeekDay (1=Mon, 7=Sun):", 33, HAL_MAX_DELAY);
+	UART_Receive(buffer, 2);
+	sDate.WeekDay = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+
+	if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	HAL_UART_Transmit(&huart2, (uint8_t*)"\n\rDate is set!\n\r", 16, HAL_MAX_DELAY);
+
+
+}
+
+void Print_Time(void)
+{
+	RTC_TimeTypeDef sTime;
+	char buffer[50];
+
+	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	sprintf(buffer, "Current Time: %02d:%02d:%02d\n\r", sTime.Hours, sTime.Minutes, sTime.Seconds);
+	HAL_UART_Transmit(&huart2, (uint8_t*)buffer,strlen(buffer), HAL_MAX_DELAY);
+}
+
+void Print_Date(void)
+{
+	RTC_DateTypeDef sDate;
+	char buffer[50];
+
+	if (HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK) {
+	        Error_Handler(); // Hata durumunda işlem yap
+	    }
+
+	HAL_RTC_GetTime(&hrtc, &sDate, RTC_FORMAT_BIN);
+	sprintf(buffer, "Current Date: %02d-%02d-20%02d\n\r", sDate.Date, sDate.Month, sDate.Year);
+	HAL_UART_Transmit(&huart2, (uint8_t*)buffer,strlen(buffer), HAL_MAX_DELAY);
+}
+
+void Show_Menu(void)
+{
+	Clear_Screen();
+	const char *menu =	"\r\nMenu:\n\r"
+						"0. Show Menu:\n\r"
+						"1. Show Time:\n\r"
+						"2. Show Date:\n\r"
+						"3. Set Time:\n\r"
+						"4. Set Date:\n\r";
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)menu, strlen(menu), HAL_MAX_DELAY);
+}
 /* GetActiveGreenDirections fonksiyonu */
 /*void GetActiveGreenDirections(char* result, size_t result_size) {
     result[0] = '\0'; // Boşalt
@@ -1024,7 +1144,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -1040,8 +1160,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-
+  Show_Menu();
 
 
 
@@ -1068,7 +1189,38 @@ int main(void)
   sprintf(msg, "Aktif faz: %s\r\n", activePhase);
   HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);*/
 
-  while (1) {
+  while (1)
+  {
+
+	  uint8_t userChoice = 0;
+
+	  UART_Receive(&userChoice, 1);
+
+	  	  switch(userChoice)
+	  	  {
+	  	  case '0':
+	  	  	  Show_Menu();
+	  	  	  break;
+	  	  case '1':
+	  		  Print_Time();
+	  		  break;
+	  	  case '2':
+	  		  Print_Date();
+	  		  break;
+	  	  case '3':
+	  		  Set_RTC_Time();
+	  		  break;
+	  	  case '4':
+	  		  Set_RTC_Date();
+	  		  break;
+	  	  default:
+	  		  HAL_UART_Transmit(&huart2, (uint8_t*)"Invalid Choice.\n\r", 36, HAL_MAX_DELAY);
+	  		  break;
+
+	  	  }
+
+
+
 
 	   // Zaman aşımı kontrolünü sağlar
 	    if (current_mode != MODE_SEQUENCE &&
@@ -1084,46 +1236,44 @@ int main(void)
               }
 
   /* USER CODE END 3 */
-
-
       switch(current_mode) {
-          case MODE_SEQUENCE:
-              Sequences_Mode();
-              break;
-          case MODE_FLASH:
-              Flash_Mode(1);
-              break;
-          case MODE_MANUAL:
-              // Manuel modda sadece komut bekler
-              break;
-          case MODE_IDLE:
-        	  break;
-          case MODE_OFF:
-        	  All_LEDs_Off();
-        	  break;
-          case MODE_RESET:
-              Reset_Mode();
-              break;
-          case MODE_PHASE:
-              if (strchr((char*)rx_data, '+')) {
-                  // Çoklu faz modu
-                  RunMultiPhase((char*)rx_data);
-                  // Çoklu faz için bekleme süresi
-                  for (uint32_t i = 0; i < 10000; i += 10) {
-                      HAL_Delay(10);
-                      if (cmd_ready) {
-                          cmd_ready = 0;
-                          ProcessCommand((char*)rx_buffer);
-                          if (current_mode != MODE_PHASE) break;
-                      }
-                  }
-              } else {
-                  // Tek faz modu - geçiş ile
-                  RunPhaseWithTransition((char*)rx_data);
-                  // RunPhaseWithTransition fonksiyonu kendi içinde mode değişimini yapacak
-                  // Bu yüzden buraya ekstra kod eklemeye gerek yok
-              }
-              break;
+                case MODE_SEQUENCE:
+                    Sequences_Mode();
+                    break;
+                case MODE_FLASH:
+                    Flash_Mode(1);
+                    break;
+                case MODE_MANUAL:
+                    // Manuel modda sadece komut bekler
+                    break;
+                case MODE_IDLE:
+              	  break;
+                case MODE_OFF:
+              	  All_LEDs_Off();
+              	  break;
+                case MODE_RESET:
+                    Reset_Mode();
+                    break;
+                case MODE_PHASE:
+                    if (strchr((char*)rx_data, '+')) {
+                        // Çoklu faz modu
+                        RunMultiPhase((char*)rx_data);
+                        // Çoklu faz için bekleme süresi
+                        for (uint32_t i = 0; i < 10000; i += 10) {
+                            HAL_Delay(10);
+                            if (cmd_ready) {
+                                cmd_ready = 0;
+                                ProcessCommand((char*)rx_buffer);
+                                if (current_mode != MODE_PHASE) break;
+                            }
+                        }
+                    } else {
+                        // Tek faz modu - geçiş ile
+                        RunPhaseWithTransition((char*)rx_data);
+                        // RunPhaseWithTransition fonksiyonu kendi içinde mode değişimini yapacak
+                        // Bu yüzden buraya ekstra kod eklemeye gerek yok
+                    }
+                    break;
 
 
 
@@ -1131,11 +1281,12 @@ int main(void)
 
 
 
-      }
-
-  }
+            }
 
 }
+
+}
+
 
 /**
   * @brief System Clock Configuration
@@ -1150,14 +1301,25 @@ void SystemClock_Config(void)
   */
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1);
 
+  /** Configure LSE Drive Capability
+  */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSIDiv = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV1;
+  RCC_OscInitStruct.PLL.PLLN = 8;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -1167,14 +1329,99 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
+  RTC_AlarmTypeDef sAlarm = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  hrtc.Init.OutPutPullUp = RTC_OUTPUT_PULLUP_NONE;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = 0x0;
+  sTime.Minutes = 0x0;
+  sTime.Seconds = 0x0;
+  sTime.SubSeconds = 0x0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 0x1;
+  sDate.Year = 0x0;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Enable the Alarm A
+  */
+  sAlarm.AlarmTime.Hours = 0x0;
+  sAlarm.AlarmTime.Minutes = 0x0;
+  sAlarm.AlarmTime.Seconds = 0x0;
+  sAlarm.AlarmTime.SubSeconds = 0x0;
+  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
+  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+  sAlarm.AlarmDateWeekDay = 0x1;
+  sAlarm.Alarm = RTC_ALARM_A;
+  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
+
 }
 
 /**
@@ -1240,7 +1487,7 @@ void MX_USART2_UART_Init(void)
   * @param None
   * @retval None
   */
- void MX_GPIO_Init(void)
+void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
@@ -1338,3 +1585,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+

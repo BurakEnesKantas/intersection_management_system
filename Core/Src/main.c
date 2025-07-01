@@ -24,7 +24,7 @@
 #include "rtc.h"
 
 
-
+int8_t time_zone_offset = 0;  // Örn: UTC+3 için +3, UTC-5 için -5
 
 
 typedef enum
@@ -187,10 +187,10 @@ void west_yellow(void);
 
 
 void ProcessCommand(char* cmd) {
-	char msg[128];  // UART'a yazılacak mesajlar için buffer
+	char msg[512];  // UART'a yazılacak mesajlar için buffer
 	last_command_time = HAL_GetTick();
 
-	if (strcmp(cmd, "time") == 0 || strcmp(cmd, "TIME") == 0) {
+	if (strcmp(cmd, "T?") == 0) {
 	        RTC_TimeTypeDef sTime;
 	        RTC_DateTypeDef sDate;
 
@@ -203,10 +203,47 @@ void ProcessCommand(char* cmd) {
 
 	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 	    }
-	    else if (strncmp(cmd, "settime=", 8) == 0) {
+	 else if (strcmp(cmd, "INFO") == 0) {
+		        RTC_TimeTypeDef sTime;
+		        RTC_DateTypeDef sDate;
+
+		        HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+		        HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+		        snprintf(msg, sizeof(msg),
+		            "=== TRAFFIC LIGHT CONTROLLER INFO ===\r\n"
+		            "Current Time: %02d:%02d:%02d\r\n"
+		            "Current Date: %02d/%02d/%04d\r\n"
+		            "=====================================\r\n"
+		            "Available Commands:\r\n"
+		            "TZ=+-X set time zone\r\n"
+		            "T? - Show current time\r\n"
+		            "ST=HH:MM:SS - Set time\r\n"
+		            "SD=DD/MM/YYYY - Set date\r\n"
+		            "SM - Sequence Mode\r\n"
+		            "FM - Flash Mode\r\n"
+		            "PM=1/2/3/4 - Phase Mode\r\n"
+		            "RST - Restart\r\n"
+		            "SIG? - Signal Group Info\r\n"
+		            "SIG=X - Signal Info\r\n"
+		            "STOP - Stop All System\r\n"
+		            "OFF - Close All LEDs\r\n"
+		            "MODE? - Mode Info\r\n"
+		            "PHASE? - Phase Info\r\n",
+		            sTime.Hours, sTime.Minutes, sTime.Seconds,
+		            sDate.Date, sDate.Month, sDate.Year + 2000);
+
+		        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+		    }
+	 else if (strcmp(cmd, "TZ?") == 0) {
+	     snprintf(msg, sizeof(msg), "Current Time Zone: UTC %+d\r\n", time_zone_offset);
+	     HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	 }
+
+	    else if (strncmp(cmd, "ST=", 3) == 0) {
 	        // Format: settime=HH:MM:SS
 	        int hours, minutes, seconds;
-	        if (sscanf(cmd + 8, "%d:%d:%d", &hours, &minutes, &seconds) == 3) {
+	        if (sscanf(cmd + 3, "%d:%d:%d", &hours, &minutes, &seconds) == 3) {
 	            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && seconds >= 0 && seconds <= 59) {
 	                RTC_TimeTypeDef sTime = {0};
 	                sTime.Hours = hours;
@@ -228,10 +265,10 @@ void ProcessCommand(char* cmd) {
 	        }
 	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 	    }
-	    else if (strncmp(cmd, "setdate=", 8) == 0) {
+	    else if (strncmp(cmd, "SD=", 3) == 0) {
 	        // Format: setdate=DD/MM/YYYY
 	        int day, month, year;
-	        if (sscanf(cmd + 8, "%d/%d/%d", &day, &month, &year) == 3) {
+	        if (sscanf(cmd + 3, "%d/%d/%d", &day, &month, &year) == 3) {
 	            if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2000 && year <= 2099) {
 	                RTC_DateTypeDef sDate = {0};
 	                sDate.Date = day;
@@ -252,37 +289,40 @@ void ProcessCommand(char* cmd) {
 	        }
 	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 	    }
-	    else if (strcmp(cmd, "info") == 0) {
-	        RTC_TimeTypeDef sTime;
-	        RTC_DateTypeDef sDate;
+	    else if (strncmp(cmd, "TZ=", 3) == 0) {
+	    	int tz = atoi(cmd + 3);
+	        if (tz >= -12 && tz <= 14) {
+	            // RTC'den mevcut zamanı al
+	            RTC_TimeTypeDef sTime;
+	            HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
 
-	        HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-	        HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+	            // Saat dilimi değişimi oranını bul
+	            int old_offset = time_zone_offset;
+	            time_zone_offset = tz;
 
-	        snprintf(msg, sizeof(msg),
-	            "=== TRAFFIC LIGHT CONTROLLER INFO ===\r\n"
-	            "Current Time: %02d:%02d:%02d\r\n"
-	            "Current Date: %02d/%02d/%04d\r\n"
-	            "=====================================\r\n"
-	            "Available Commands:\r\n"
-	            "time - Show current time\r\n"
-	            "settime=HH:MM:SS - Set time\r\n"
-	            "setdate=DD/MM/YYYY - Set date\r\n"
-	            "SM - Sequence Mode\r\n"
-	            "FM - Flash Mode\r\n"
-	            "phase=1/2/3/4 - Phase Mode\r\n"
-	            "RST - Restart\r\n"
-	            "SIG? - Signal Group Info\r\n"
-	            "SIG=X - Signal Info\r\n"
-	            "stop - Stop All System\r\n"
-	            "off - Close All LEDs\r\n"
-	            "MODE? - Mode Info\r\n"
-	            "PHASE? - Phase Info\r\n",
-	            sTime.Hours, sTime.Minutes, sTime.Seconds,
-	            sDate.Date, sDate.Month, sDate.Year + 2000);
+	            // Saat dilimini RTC saatine uygula
+	            int new_hour = sTime.Hours + (time_zone_offset - old_offset);
 
+	            // Saat 0-23 aralığına indir
+	            if (new_hour >= 24) new_hour -= 24;
+	            else if (new_hour < 0) new_hour += 24;
+
+	            sTime.Hours = new_hour;
+
+	            // RTC saatini yeni saatle güncelle
+	            if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) == HAL_OK) {
+	                snprintf(msg, sizeof(msg), "RTC time updated and time zone set to UTC %+d\r\n", time_zone_offset);
+	            } else {
+	                snprintf(msg, sizeof(msg), "Failed to update RTC time!\r\n");
+	            }
+	        } else {
+	            snprintf(msg, sizeof(msg), "Invalid time zone! Range: -12 to +14\r\n");
+	        }
 	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 	    }
+
+
+
 	else if (strcmp(cmd, "SM") == 0) {
         current_mode = MODE_SEQUENCE;
         HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", strlen("SEQUENCE MODE STARTED\r\n"), HAL_MAX_DELAY);
@@ -347,7 +387,7 @@ void ProcessCommand(char* cmd) {
         GPIO_TypeDef* ports[] = {NG_PORT, EG_PORT, WG_PORT, SG_PORT};
         uint16_t pins[] = {NG_PIN, EG_PIN, WG_PIN, SG_PIN};
 
-        char msg[128];
+        char msg[512];
         msg[0] = '\0'; // Boş string ile başlat
         strcat(msg, "Active Phase(s): ");
 
@@ -375,7 +415,7 @@ void ProcessCommand(char* cmd) {
         current_mode = MODE_FLASH;
         HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", strlen("FLASH MODE STARTED\r\n"), HAL_MAX_DELAY);
     }
-    else if (strncmp(cmd, "phase=", 6) == 0) {
+    else if (strncmp(cmd, "PM=", 6) == 0) {
         current_mode = MODE_PHASE;
         strncpy((char*)rx_data, cmd + 6, sizeof(rx_data) - 1);
         rx_data[sizeof(rx_data)-1] = '\0';
@@ -387,11 +427,11 @@ void ProcessCommand(char* cmd) {
     	current_mode = MODE_RESET;
         HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode Continues\r\n", strlen("Sequence Mode Continues\r\n"), HAL_MAX_DELAY);
     }
-    else if (strcmp(cmd, "stop") == 0) {
+    else if (strcmp(cmd, "STOP") == 0) {
         current_mode = MODE_IDLE;
         HAL_UART_Transmit(&huart2, (uint8_t*)"ALL MODES STOPPED\r\n", strlen("ALL MODES STOPPED\r\n"), HAL_MAX_DELAY);
     }
-    else if (strcmp(cmd, "off") == 0)
+    else if (strcmp(cmd, "OFF") == 0)
     {
     	current_mode = MODE_OFF;
     	HAL_UART_Transmit(&huart2, (uint8_t*)"ALL LEDs OFF\r\n", strlen("ALL LEDs OFF\r\n"), HAL_MAX_DELAY);

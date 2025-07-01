@@ -100,6 +100,8 @@ extern UART_HandleTypeDef huart2;
 
 volatile uint32_t last_command_time = 0;
 #define COMMAND_TIMEOUT 80000
+uint16_t green_delay = 4000;
+uint16_t red_delay = 4000;
 uint16_t north_delay = 4000;
 uint16_t south_delay = 4000;
 uint16_t east_delay = 4000;
@@ -194,14 +196,16 @@ void ProcessCommand(char* cmd) {
 	char msg[128];  // UART'a yazılacak mesajlar için buffer
 	last_command_time = HAL_GetTick();
 	if (strcmp(cmd, "info") == 0) {
-		HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=north/south/east/west\r\n"
-				"Restart = reset\r\nSignal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off" ,
-				strlen("Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=north/south/east/west\r\nRestart = reset\r\n"
-						"Signal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off" ), HAL_MAX_DELAY);
+		HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=1/2/3/4\r\n"
+				"Restart = RST\r\nSignal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off\r\n"
+				"Mode Info = MODE?\r\nPhase Info = PHASE?" ,
+				strlen("Sequence Mode = SM\r\nFlash Mode = FM\r\nPhase Mode = phase=1/2/3/4\r\nRestart = RST\r\n"
+						"Signal Group Info = SIG?\r\nSignal Info = SIG=X(1-2-3-4)\r\nStop All System = stop\r\nClose All LEDs = off\r\n"
+						"Mode Info = MODE?\r\nPhase Info = PHASE?" ), HAL_MAX_DELAY);
 		}
 	else if (strcmp(cmd, "SM") == 0) {
         current_mode = MODE_SEQUENCE;
-        HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", 30, HAL_MAX_DELAY);
+        HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", strlen("SEQUENCE MODE STARTED\r\n"), HAL_MAX_DELAY);
     }
 
 	else if (strcmp(cmd, "SIG?") == 0) {
@@ -257,15 +261,39 @@ void ProcessCommand(char* cmd) {
        		HAL_UART_Transmit(&huart2, (uint8_t*)"PHASE MODE\r\n", strlen("PHASE MODE\r\n"), HAL_MAX_DELAY);
   	  	}
     }
-    else if(strcmp(cmd, "active?") == 0){
-        char actives[64];
-        GetActiveGreenDirections(actives, sizeof(actives));
-        HAL_UART_Transmit(&huart2, (uint8_t*)actives, strlen(actives), HAL_MAX_DELAY);
+    else if(strcmp(cmd, "PHASE?") == 0)
+    {
+        const char* directionNames[] = {"North", "East", "West", "South"};
+        GPIO_TypeDef* ports[] = {NG_PORT, EG_PORT, WG_PORT, SG_PORT};
+        uint16_t pins[] = {NG_PIN, EG_PIN, WG_PIN, SG_PIN};
+
+        char msg[128];
+        msg[0] = '\0'; // Boş string ile başlat
+        strcat(msg, "Active Phase(s): ");
+
+        int found = 0;
+        for (int i = 0; i < 4; i++) {
+            if (HAL_GPIO_ReadPin(ports[i], pins[i]) == GPIO_PIN_SET) {
+                if (found > 0) {
+                    strcat(msg, ", ");
+                }
+                strcat(msg, directionNames[i]);
+                found++;
+            }
+        }
+
+        if (found == 0) {
+            strcat(msg, "None");
+        }
+
+        strcat(msg, "\r\n");
+        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
+
 
     else if (strcmp(cmd, "FM") == 0) {
         current_mode = MODE_FLASH;
-        HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", 30, HAL_MAX_DELAY);
+        HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", strlen("FLASH MODE STARTED\r\n"), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "phase=", 6) == 0) {
         current_mode = MODE_PHASE;
@@ -274,7 +302,7 @@ void ProcessCommand(char* cmd) {
         sprintf(msg, "Phase: %s\r\n", rx_data);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
-    else if (strcmp(cmd, "reset") == 0) {
+    else if (strcmp(cmd, "RST") == 0) {
     	HAL_UART_Transmit(&huart2, (uint8_t*)"WAIT FOR RESTART...\r\n", strlen("WAIT FOR RESTART...\r\n"), HAL_MAX_DELAY);
     	current_mode = MODE_RESET;
         HAL_UART_Transmit(&huart2, (uint8_t*)"Sequence Mode Continues\r\n", strlen("Sequence Mode Continues\r\n"), HAL_MAX_DELAY);
@@ -454,7 +482,7 @@ void RunPhaseWithTransition(char* target_phase) {
 
 
     north_red(); south_red(); east_red(); west_red();
-    HAL_Delay(transition_delay); // kırmızıya geçiş beklemesi
+    HAL_Delay(red_delay); // kırmızıya geçiş beklemesi
 
 
     if (strcmp(target_phase, "north") == 0) {
@@ -489,17 +517,68 @@ void RunPhaseWithTransition(char* target_phase) {
     else if (strcmp(target_phase, "west") == 0) {
         west_green();
     }
+
+    uint32_t phase_duration = 0;
+    if (strcmp(target_phase, "north") == 0) {
+            phase_duration = north_delay;
+        }
+    else if (strcmp(target_phase, "south") == 0) {
+            phase_duration = south_delay;
+        }
+    else if (strcmp(target_phase, "east") == 0) {
+            phase_duration = east_delay;
+        }
+    else if (strcmp(target_phase, "west") == 0) {
+            phase_duration = west_delay;
+        }
+
+    for(uint32_t i = 0; i < phase_duration; i += 10) {
+            HAL_Delay(10);
+            if(cmd_ready) {
+                cmd_ready = 0;
+                ProcessCommand((char*)rx_buffer);
+                if(current_mode != MODE_PHASE) return; // Mod değişirse çık
+            }
+        }
+    // Fazı bitir - sarıya çevir
+        if (strcmp(target_phase, "north") == 0) {
+            north_yellow();
+            HAL_Delay(yellow_delay);
+            north_red();
+        }
+        else if (strcmp(target_phase, "south") == 0) {
+            south_yellow();
+            HAL_Delay(yellow_delay);
+            south_red();
+        }
+        else if (strcmp(target_phase, "east") == 0) {
+            east_yellow();
+            HAL_Delay(yellow_delay);
+            east_red();
+        }
+        else if (strcmp(target_phase, "west") == 0) {
+            west_yellow();
+            HAL_Delay(yellow_delay);
+            west_red();
+        }
+
+        HAL_Delay(red_delay);
+
+        // Sequence moduna geç
+        current_mode = MODE_SEQUENCE;
+        HAL_UART_Transmit(&huart2, (uint8_t*)"Phase completed, returning to SEQUENCE MODE\r\n",
+                          strlen("Phase completed, returning to SEQUENCE MODE\r\n"), HAL_MAX_DELAY);
 }
 
 
 
-const char* GetCurrentGreenPhase(void) {
+/*const char* GetCurrentGreenPhase(void) {
     if (HAL_GPIO_ReadPin(NG_PORT, NG_PIN) == GPIO_PIN_SET) return "north";
     if (HAL_GPIO_ReadPin(SG_PORT, SG_PIN) == GPIO_PIN_SET) return "south";
     if (HAL_GPIO_ReadPin(EG_PORT, EG_PIN) == GPIO_PIN_SET) return "east";
     if (HAL_GPIO_ReadPin(WG_PORT, WG_PIN) == GPIO_PIN_SET) return "west";
-    return "none";
-}
+    return 1;
+}*/
 
 
 
@@ -906,7 +985,7 @@ void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 
-void GetActiveGreenDirections(char* result, size_t result_size);
+//void GetActiveGreenDirections(char* result, size_t result_size);
 void RunMultiPhase(char* input);
 
 
@@ -919,15 +998,16 @@ void RunMultiPhase(char* input);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 /* GetActiveGreenDirections fonksiyonu */
-void GetActiveGreenDirections(char* result, size_t result_size) {
+/*void GetActiveGreenDirections(char* result, size_t result_size) {
     result[0] = '\0'; // Boşalt
     for (int i = 0; i < direction_count; i++) {
         if (HAL_GPIO_ReadPin(directions[i].green_port, directions[i].green_pin) == GPIO_PIN_SET) {
             strncat(result, directions[i].name, result_size - strlen(result) - 1);
             strncat(result, " ", result_size - strlen(result) - 1);
         }
+
     }
-}
+}*/
 /* USER CODE END 0 */
 
 /**
@@ -983,10 +1063,10 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&uart_rx_byte, 1);
 
 
-  const char* activePhase = GetCurrentGreenPhase();
+  /*const char* activePhase = GetCurrentGreenPhase();
   char msg[32];
   sprintf(msg, "Aktif faz: %s\r\n", activePhase);
-  HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+  HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);*/
 
   while (1) {
 
@@ -994,7 +1074,7 @@ int main(void)
 	    if (current_mode != MODE_SEQUENCE &&
 	        (HAL_GetTick() - last_command_time) > COMMAND_TIMEOUT) {
 	        current_mode = MODE_SEQUENCE;
-	        HAL_UART_Transmit(&huart2, (uint8_t*)"Timeout, returning to SEQUENCE MODE\r\n", 35, HAL_MAX_DELAY);
+	        HAL_UART_Transmit(&huart2, (uint8_t*)"Timeout, returning to SEQUENCE MODE\r\n", strlen("Timeout, returning to SEQUENCE MODE\r\n"), HAL_MAX_DELAY);
 	        last_command_time = HAL_GetTick(); // Zamanı sıfırlar
 	    }
       if(cmd_ready)
@@ -1026,19 +1106,25 @@ int main(void)
               break;
           case MODE_PHASE:
               if (strchr((char*)rx_data, '+')) {
+                  // Çoklu faz modu
                   RunMultiPhase((char*)rx_data);
-              } else {
-                  RunPhaseWithTransition((char*)rx_data);
-              }
-              for (uint32_t i = 0; i < 10000; i += 10) {
-                  HAL_Delay(10);
-                  if (cmd_ready) {
-                      cmd_ready = 0;
-                      ProcessCommand((char*)rx_buffer);
-                      if (current_mode != MODE_PHASE) break;
+                  // Çoklu faz için bekleme süresi
+                  for (uint32_t i = 0; i < 10000; i += 10) {
+                      HAL_Delay(10);
+                      if (cmd_ready) {
+                          cmd_ready = 0;
+                          ProcessCommand((char*)rx_buffer);
+                          if (current_mode != MODE_PHASE) break;
+                      }
                   }
+              } else {
+                  // Tek faz modu - geçiş ile
+                  RunPhaseWithTransition((char*)rx_data);
+                  // RunPhaseWithTransition fonksiyonu kendi içinde mode değişimini yapacak
+                  // Bu yüzden buraya ekstra kod eklemeye gerek yok
               }
               break;
+
 
 
 

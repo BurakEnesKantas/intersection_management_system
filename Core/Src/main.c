@@ -189,6 +189,10 @@ void west_yellow(void);
 void ProcessCommand(char* cmd) {
 	char msg[512];  // UART'a yazılacak mesajlar için buffer
 	last_command_time = HAL_GetTick();
+	// Komut geldiğinde LED blink
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_SET);
+	HAL_Delay(50);
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_RESET);
 
 	if (strcmp(cmd, "T?") == 0) {
 	        RTC_TimeTypeDef sTime;
@@ -415,9 +419,9 @@ void ProcessCommand(char* cmd) {
         current_mode = MODE_FLASH;
         HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", strlen("FLASH MODE STARTED\r\n"), HAL_MAX_DELAY);
     }
-    else if (strncmp(cmd, "PM=", 6) == 0) {
+    else if (strncmp(cmd, "PM=", 3) == 0) {
         current_mode = MODE_PHASE;
-        strncpy((char*)rx_data, cmd + 6, sizeof(rx_data) - 1);
+        strncpy((char*)rx_data, cmd + 3, sizeof(rx_data) - 1);
         rx_data[sizeof(rx_data)-1] = '\0';
         sprintf(msg, "Phase: %s\r\n", rx_data);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
@@ -1457,7 +1461,7 @@ void MX_GPIO_Init(void)
  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
 
  /*Configure GPIO pin Output Level */
- HAL_GPIO_WritePin(GPIOD, GPIO_PIN_6, GPIO_PIN_RESET);
+ HAL_GPIO_WritePin(GPIOD, GPIO_PIN_6|GPIO_PIN_8, GPIO_PIN_RESET);
 
  /*Configure GPIO pins : PC0 PC1 PC6 PC8
                           PC9 */
@@ -1483,7 +1487,7 @@ void MX_GPIO_Init(void)
  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
  /*Configure GPIO pin : PD6 */
- GPIO_InitStruct.Pin = GPIO_PIN_6;
+ GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_8;
  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
  GPIO_InitStruct.Pull = GPIO_NOPULL;
  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

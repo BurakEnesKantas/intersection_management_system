@@ -1249,7 +1249,7 @@ int main(void)
 	                    // Tek faz modu - geçiş ile
 	                    RunPhaseWithTransition((char*)rx_data);
 	                    // RunPhaseWithTransition fonksiyonu kendi içinde mode değişimini yapacak
-	                    // Bu yüzden buraya ekstra kod eklemeye gerek yok
+
 	                }
 	                break;
 	        }

@@ -27,7 +27,7 @@
 int8_t time_zone_offset = 0;  // Örn: UTC+3 için +3, UTC-5 için -5
 
 
-typedef enum
+typedef enum //typdef yeni bir veri tipi oluşturmaya yarar, enum'da sistemin farklı çalışma modlarını tanımlar
 {
     MODE_IDLE,		//  0: Boşta
     MODE_SEQUENCE,	//  1: Trafik ışığı sequence modu
@@ -36,16 +36,23 @@ typedef enum
 	MODE_RESET,		//  5: Sistem yeniden başlatılıyor
 	MODE_OFF,		//  4: Bütün ıl-şıklar kapalı
 	MODE_PHASE
-} SystemMode_t;
+}
+
+SystemMode_t;
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
+//PA2 TX, PA3 RX
 
 /*
 kuzey - north
 NR,NY,NG
 güney - south
+SR,SY,SG
 doğu - east
+ER,EY,EG
 batı - west
+WR,WY,WG
 */
 
 //NORTH GROUP
@@ -81,7 +88,14 @@ batı - west
 #define WG_PORT GPIOB
 
 
+#define UART_PIN GPIO_PIN_8
+#define UART_PORT GPIOD
+
+
 #define RX_BUFFER_SIZE 50
+
+
+//Volatile değişkenin beklenmedik şekilde değişebileceğini (kesmelerde) belirtir, derleyici optimizasyonunu engeller.
 
 volatile SystemMode_t current_mode = MODE_IDLE;
 SystemMode_t Reset_Mode(void);
@@ -107,6 +121,8 @@ char rx_data[50] = {0};
 
 uint8_t uart_rx_byte;
 
+//Farklı veri tiplerini bir arada tutan yapı
+
 typedef struct {
     const char* name;
     GPIO_TypeDef* green_port;
@@ -115,7 +131,8 @@ typedef struct {
     uint16_t yellow_pin;
     GPIO_TypeDef* red_port;
     uint16_t red_pin;
-} Direction;
+}
+Direction;
 
 Direction directions[] = {
     {"north", NG_PORT, NG_PIN, NY_PORT, NY_PIN, NR_PORT, NR_PIN},
@@ -190,9 +207,9 @@ void ProcessCommand(char* cmd) {
 	char msg[512];  // UART'a yazılacak mesajlar için buffer
 	last_command_time = HAL_GetTick();
 	// Komut geldiğinde LED blink
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(UART_PORT, UART_PIN, GPIO_PIN_SET);
 	HAL_Delay(50);
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_8, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(UART_PORT, UART_PIN, GPIO_PIN_RESET);
 
 	if (strcmp(cmd, "T?") == 0) {
 	        RTC_TimeTypeDef sTime;
@@ -694,20 +711,6 @@ void RunPhaseWithTransition(char* target_phase) {
                           strlen("Phase completed, returning to SEQUENCE MODE\r\n"), HAL_MAX_DELAY);
 }
 
-
-
-/*const char* GetCurrentGreenPhase(void) {
-    if (HAL_GPIO_ReadPin(NG_PORT, NG_PIN) == GPIO_PIN_SET) return "north";
-    if (HAL_GPIO_ReadPin(SG_PORT, SG_PIN) == GPIO_PIN_SET) return "south";
-    if (HAL_GPIO_ReadPin(EG_PORT, EG_PIN) == GPIO_PIN_SET) return "east";
-    if (HAL_GPIO_ReadPin(WG_PORT, WG_PIN) == GPIO_PIN_SET) return "west";
-    return 1;
-}*/
-
-
-
-
-
 SystemMode_t Reset_Mode(void)
 
 {
@@ -1065,8 +1068,6 @@ void Flash_Mode(uint16_t duration_ms) {
 /* USER CODE BEGIN PV */
 
 /* USER CODE BEGIN PV */
-/* Yön yapısı ve global değişkenler */
-
 
 /* USER CODE END PV */
 
@@ -1101,8 +1102,6 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 char buffer [100];
 /* USER CODE BEGIN PV */
-/* Yön yapısı ve global değişkenler */
-
 
 /* USER CODE END PV */
 
@@ -1114,7 +1113,6 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 
-//void GetActiveGreenDirections(char* result, size_t result_size);
 void RunMultiPhase(char* input);
 
 
@@ -1125,16 +1123,7 @@ void RunMultiPhase(char* input);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 /* GetActiveGreenDirections fonksiyonu */
-/*void GetActiveGreenDirections(char* result, size_t result_size) {
-    result[0] = '\0'; // Boşalt
-    for (int i = 0; i < direction_count; i++) {
-        if (HAL_GPIO_ReadPin(directions[i].green_port, directions[i].green_pin) == GPIO_PIN_SET) {
-            strncat(result, directions[i].name, result_size - strlen(result) - 1);
-            strncat(result, " ", result_size - strlen(result) - 1);
-        }
 
-    }
-}*/
 /* USER CODE END 0 */
 
 /**
@@ -1189,10 +1178,7 @@ int main(void)
   HAL_UART_Receive_IT(&huart2, (uint8_t*)&uart_rx_byte, 1);
 
 
-  /*const char* activePhase = GetCurrentGreenPhase();
-  char msg[32];
-  sprintf(msg, "Aktif faz: %s\r\n", activePhase);
-  HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);*/
+
 
   while (1) {
 
@@ -1347,7 +1333,7 @@ void MX_RTC_Init(void)
   }
 
   /* USER CODE BEGIN Check_RTC_BKUP */
-  // Başarılı başlatmayı işaretleyin
+
   HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR0, 0x32F2);
   }
   /* USER CODE END Check_RTC_BKUP */
@@ -1404,8 +1390,10 @@ void MX_USART2_UART_Init(void)
   huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
   huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+
   /*Interrup ayarlarını burda yaptık
      HAL_UART_Receive_IT(...) olan kısım 1byte almak için kesme ayarıdı*/
+
   HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(USART2_IRQn);
 

@@ -444,7 +444,7 @@ void ProcessCommand(char* cmd) {
     }
     else if (strncmp(cmd, "PM=", 3) == 0) {
         current_mode = MODE_PHASE;
-        int phase_num = atoi(cmd + 3); // "PM=1" -> 1, "PM=2" -> 2, vb.
+        int phase_num = atoi(cmd + 3);
 
         // Her bir sayıya yön atadık
         const char* phase_name = "";

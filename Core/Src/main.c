@@ -24,7 +24,7 @@
 #include "rtc.h"
 
 
-int8_t time_zone_offset = 0;  // Örn: UTC+3 için +3, UTC-5 için -5
+int8_t time_zone_offset = 3;  // Örn: UTC+3 için +3, UTC-5 için -5
 
 
 typedef enum //typdef yeni bir veri tipi oluşturmaya yarar, enum'da sistemin farklı çalışma modlarını tanımlar
@@ -95,7 +95,7 @@ WR,WY,WG
 #define RX_BUFFER_SIZE 50
 
 
-//Volatile değişkenin beklenmedik şekilde değişebileceğini (kesmelerde) belirtir, derleyici optimizasyonunu engeller.
+//Volatile değişkenin beklenmedik şekilde değişebileceğini (kesmelerle) belirtir, derleyici optimizasyonunu engeller.
 
 volatile SystemMode_t current_mode = MODE_IDLE;
 SystemMode_t Reset_Mode(void);
@@ -153,9 +153,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //her byte(veri) geldiğ
     {
       if(rx_index > 0)
       {
-        rx_buffer[rx_index] = '\0';
-        cmd_ready = 1;
-        rx_index = 0;
+        rx_buffer[rx_index] = '\0'; //string sonlandırılır
+        cmd_ready = 1; //komut hazır bayrağı çekilir.
+        rx_index = 0; //buffer sıfırlanır.
       }
     }
     else if(rx_index < RX_BUFFER_SIZE-1)
@@ -164,7 +164,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //her byte(veri) geldiğ
     }
 
 
-    HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1); //1byte almak için kesme ayarıdır
+    HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1); // Yeni veri beklemek için kesme tekrar başlatılır.
   }
 }
 
@@ -204,7 +204,7 @@ void west_yellow(void);
 
 
 void ProcessCommand(char* cmd) {
-	char msg[512];  // UART'a yazılacak mesajlar için buffer
+	char msg[700];  // UART'a yazılacak mesajlar için buffer
 	last_command_time = HAL_GetTick();
 	// Komut geldiğinde LED blink
 	HAL_GPIO_WritePin(UART_PORT, UART_PIN, GPIO_PIN_SET);
@@ -243,14 +243,20 @@ void ProcessCommand(char* cmd) {
 		            "SD=DD/MM/YYYY - Set date\r\n"
 		            "SM - Sequence Mode\r\n"
 		            "FM - Flash Mode\r\n"
-		            "PM=1/2/3/4 - Phase Mode\r\n"
+		            "PM=1(north)/2(south)/3(east)/4(west) - Phase Mode\r\n"
 		            "RST - Restart\r\n"
 		            "SIG? - Signal Group Info\r\n"
 		            "SIG=X - Signal Info\r\n"
+		        	"MODE? - Mode Info\r\n"
+		            "PHASE? - Phase Info\r\n"
+		            "CHANGE THE DELAY:\r\n"
+		            "south=delay(ms)\r\n"
+		            "north=delay(ms)\r\n"
+		            "east=delay(ms)\r\n"
+		            "west=delay(ms)\r\n"
+		            "transition=delay(ms)\r\n"
 		            "STOP - Stop All System\r\n"
-		            "OFF - Close All LEDs\r\n"
-		            "MODE? - Mode Info\r\n"
-		            "PHASE? - Phase Info\r\n",
+		            "OFF - Close All LEDs\r\n",
 		            sTime.Hours, sTime.Minutes, sTime.Seconds,
 		            sDate.Date, sDate.Month, sDate.Year + 2000);
 
@@ -438,9 +444,26 @@ void ProcessCommand(char* cmd) {
     }
     else if (strncmp(cmd, "PM=", 3) == 0) {
         current_mode = MODE_PHASE;
-        strncpy((char*)rx_data, cmd + 3, sizeof(rx_data) - 1);
+        int phase_num = atoi(cmd + 3); // "PM=1" -> 1, "PM=2" -> 2, vb.
+
+        // Her bir sayıya yön atadık
+        const char* phase_name = "";
+        switch(phase_num) {
+            case 1: phase_name = "north"; break;
+            case 2: phase_name = "south"; break;
+            case 3: phase_name = "east"; break;
+            case 4: phase_name = "west"; break;
+            default:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"Invalid phase number! Use 1-4\r\n",
+                                strlen("Invalid phase number! Use 1-4\r\n"), HAL_MAX_DELAY);
+                return;
+        }
+
+        strncpy((char*)rx_data, phase_name, sizeof(rx_data) - 1);
         rx_data[sizeof(rx_data)-1] = '\0';
-        sprintf(msg, "Phase: %s\r\n", rx_data);
+
+        char msg[50];
+        snprintf(msg, sizeof(msg), "Phase %d (%s) activated\r\n", phase_num, phase_name);
         HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     }
     else if (strcmp(cmd, "RST") == 0) {
@@ -1223,7 +1246,7 @@ int main(void)
 	                    // Çoklu faz modu
 	                    RunMultiPhase((char*)rx_data);
 	                    // Çoklu faz için bekleme süresi
-	                    for (uint32_t i = 0; i < 10000; i += 10) {
+	                    for (uint32_t i = 0; i < 1000; i += 10) {
 	                        HAL_Delay(10);
 	                        if (cmd_ready) {
 	                            cmd_ready = 0;
@@ -1394,8 +1417,8 @@ void MX_USART2_UART_Init(void)
   /*Interrup ayarlarını burda yaptık
      HAL_UART_Receive_IT(...) olan kısım 1byte almak için kesme ayarıdı*/
 
-  HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(USART2_IRQn);
+  HAL_NVIC_SetPriority(USART2_IRQn, 0, 0); //kesme önceliği
+  HAL_NVIC_EnableIRQ(USART2_IRQn); //uart2 kesmesini aktif etme ayarı
 
   if (HAL_UART_Init(&huart2) != HAL_OK)
   {

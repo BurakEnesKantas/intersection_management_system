@@ -1,0 +1,62 @@
+Info: Processing symbol 'D1:'.
+Info: Processing symbol 'R11:'.
+Info: Processing symbol 'D2:'.
+Info: Processing symbol 'R8:'.
+Info: Processing symbol 'EG1:'.
+Info: Processing symbol 'R9:'.
+Info: Processing symbol 'ER1:'.
+Info: Processing symbol 'NY1:'.
+Info: Processing symbol 'EY1:'.
+Info: Processing symbol 'R10:'.
+Info: Processing symbol 'NG1:'.
+Info: Processing symbol 'R12:'.
+Info: Processing symbol 'NR1:'.
+Info: Processing symbol 'R13:'.
+Info: Processing symbol 'R14:'.
+Info: Processing symbol 'SG1:'.
+Info: Processing symbol 'R1:'.
+Info: Processing symbol 'SR1:'.
+Info: Processing symbol 'R2:'.
+Info: Processing symbol 'SY1:'.
+Info: Processing symbol 'R3:'.
+Info: Processing symbol 'WG1:'.
+Info: Processing symbol 'R4:'.
+Info: Total warnings: 0, errors: 28.
+Info: Processing symbol 'R5:'.
+Info: Processing symbol 'WR1:'.
+Info: Processing symbol 'R6:'.
+Info: Processing symbol 'WY1:'.
+Info: Processing symbol 'R7:'.
+
+
+Error: Cannot add D1 (no footprint assigned).
+Error: Cannot add D2 (no footprint assigned).
+Error: Cannot add EG1 (no footprint assigned).
+Error: Cannot add EY1 (no footprint assigned).
+Error: Cannot add NG1 (no footprint assigned).
+Error: Cannot add NR1 (no footprint assigned).
+Error: Cannot add ER1 (no footprint assigned).
+Error: Cannot add NY1 (no footprint assigned).
+Error: Cannot add R1 (no footprint assigned).
+Error: Cannot add R2 (no footprint assigned).
+Error: Cannot add R3 (no footprint assigned).
+Error: Cannot add R4 (no footprint assigned).
+Error: Cannot add R5 (no footprint assigned).
+Error: Cannot add R6 (no footprint assigned).
+Error: Cannot add R14 (no footprint assigned).
+Error: Cannot add R7 (no footprint assigned).
+Error: Cannot add SG1 (no footprint assigned).
+Error: Cannot add R11 (no footprint assigned).
+Error: Cannot add SR1 (no footprint assigned).
+Error: Cannot add R9 (no footprint assigned).
+Error: Cannot add SY1 (no footprint assigned).
+Error: Cannot add R12 (no footprint assigned).
+Error: Cannot add R8 (no footprint assigned).
+Error: Cannot add R13 (no footprint assigned).
+Error: Cannot add WR1 (no footprint assigned).
+Error: Cannot add R10 (no footprint assigned).
+Error: Cannot add WY1 (no footprint assigned).
+Error: Cannot add WG1 (no footprint assigned).
+
+
+Info: Total warnings: 0, errors: 28.

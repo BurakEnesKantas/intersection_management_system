@@ -763,7 +763,7 @@ void RunPhase(char* phase, uint16_t green_time) {
         north_red(); south_red(); east_red(); west_green();
     }
 
-    if(!CheckModeChange()) HAL_Delay(green_time);
+
     if(current_mode != MODE_SEQUENCE) return;
 
 
@@ -777,12 +777,12 @@ void RunPhase(char* phase, uint16_t green_time) {
         north_red(); south_red(); east_red(); west_yellow();
     }
 
-    if(!CheckModeChange()) HAL_Delay(yellow_delay);
+
     if(current_mode != MODE_SEQUENCE) return;
 
 
     north_red(); south_red(); east_red(); west_red();
-    if(!CheckModeChange()) HAL_Delay(transition_delay);
+
     if(current_mode != MODE_SEQUENCE) return;
 
 
@@ -800,7 +800,7 @@ void RunPhase(char* phase, uint16_t green_time) {
         north_yellow();
     }
 
-    if(!CheckModeChange()) HAL_Delay(transition_delay);
+
     if(current_mode != MODE_SEQUENCE) return;
 }
 
@@ -813,7 +813,7 @@ void Sequences_Mode(void) {
     	        south_red();
     	        east_red();
     	        west_red();
-    	        if(!CheckModeChange())
+    	        if(1)
     	        	for(uint32_t i = 0; i < north_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
@@ -830,7 +830,7 @@ void Sequences_Mode(void) {
     	       	south_red();
     	       	east_red();
     	        west_red();
-    	        if(!CheckModeChange())
+    	        if(1)
     	        	for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
@@ -848,7 +848,7 @@ void Sequences_Mode(void) {
     	        HAL_GPIO_WritePin(SY_PORT, SY_PIN, GPIO_PIN_SET);
     	       	east_red();
     	       	west_red();
-    	        if(!CheckModeChange())
+    	        if(1)
     	        	for(uint32_t i = 0; i < transition_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
@@ -865,7 +865,7 @@ void Sequences_Mode(void) {
     	       	south_green();
     	      	east_red();
     	        west_red();
-    	        if(!CheckModeChange())
+    	        if(1)
     	        	for(uint32_t i = 0; i < south_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
@@ -882,7 +882,7 @@ void Sequences_Mode(void) {
     	       	south_yellow();
     	       	east_red();
     	        west_red();
-    	        if(!CheckModeChange())
+    	        if(1)
     	        	for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	        	    HAL_Delay(10);
     	        	    if(cmd_ready) {
@@ -900,7 +900,7 @@ void Sequences_Mode(void) {
     	        HAL_GPIO_WritePin(ER_PORT, ER_PIN, GPIO_PIN_SET);
     	        HAL_GPIO_WritePin(EY_PORT, EY_PIN, GPIO_PIN_SET);
     	       	west_red();
-    	       	if(!CheckModeChange())
+    	       	if(1)
     	       		for(uint32_t i = 0; i < transition_delay; i += 10) {
     	       		    HAL_Delay(10);
     	       		    if(cmd_ready) {
@@ -916,7 +916,7 @@ void Sequences_Mode(void) {
     	       	south_red();
     	       	east_green();
     	  		west_red();
-    	       	if(!CheckModeChange())
+    	       	if(1)
     	       		for(uint32_t i = 0; i < east_delay; i += 10) {
     	       		    HAL_Delay(10);
     	       		    if(cmd_ready) {
@@ -932,7 +932,7 @@ void Sequences_Mode(void) {
     	       	south_red();
     	       	east_yellow();
     	   		west_red();
-    	   		if(!CheckModeChange())
+    	   		if(1)
     	   			for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
@@ -949,7 +949,7 @@ void Sequences_Mode(void) {
     	   		east_red();
     	   		HAL_GPIO_WritePin(WR_PORT, WR_PIN, GPIO_PIN_SET);
     	   		HAL_GPIO_WritePin(WY_PORT, WY_PIN, GPIO_PIN_SET);
-    	   		if(!CheckModeChange())
+    	   		if(1)
     	   			for(uint32_t i = 0; i < transition_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
@@ -965,7 +965,7 @@ void Sequences_Mode(void) {
     	   		south_red();
     	   		east_red();
     	   		west_green();
-    	   		if(!CheckModeChange())
+    	   		if(1)
     	   			for(uint32_t i = 0; i < west_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
@@ -981,7 +981,7 @@ void Sequences_Mode(void) {
     	   		south_red();
     	   		east_red();
     	   		west_yellow();
-    	   		if(!CheckModeChange())
+    	   		if(1)
     	   			for(uint32_t i = 0; i < yellow_delay; i += 10) {
     	   			    HAL_Delay(10);
     	   			    if(cmd_ready) {
@@ -998,7 +998,7 @@ void Sequences_Mode(void) {
     	   		south_red();
     	   		east_red();
     	 		west_red();
-    	 		if(!CheckModeChange())
+    	 		if(1)
     	 			for(uint32_t i = 0; i < transition_delay; i += 10) {
     	 			    HAL_Delay(10);
     	 			    if(cmd_ready) {
@@ -1051,19 +1051,7 @@ void RunMultiPhase(char* input) {
 
 
 
-uint8_t CheckModeChange(void) {
-    uint8_t temp;
-    if(HAL_UART_Receive(&huart2, &temp, 1, 10) == HAL_OK) {
-        rx_data[rx_index++] = temp;
-        if(temp == '\r' || temp == '\n') {
-            rx_data[rx_index-1] = '\0';
-            ProcessCommand(rx_data);
-            rx_index = 0;
-            return 1;
-        }
-    }
-    return 0;
-}
+
 
 
 void Flash_Mode(uint16_t duration_ms) {

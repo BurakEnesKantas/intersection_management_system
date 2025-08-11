@@ -1,0 +1,5 @@
+../Core/Src/modes.c:8:6:Sequences_Mode	56	static
+../Core/Src/modes.c:215:6:Flash_Mode	24	static
+../Core/Src/modes.c:232:6:RunPhaseWithTransition	24	static
+../Core/Src/modes.c:346:6:RunMultiPhase	32	static
+../Core/Src/modes.c:378:14:Reset_Mode	8	static

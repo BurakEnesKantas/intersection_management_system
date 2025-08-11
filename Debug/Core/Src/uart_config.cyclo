@@ -1,0 +1,2 @@
+../Core/Src/uart_config.c:8:6:MX_USART2_UART_Init	5
+../Core/Src/uart_config.c:34:6:HAL_UART_RxCpltCallback	6

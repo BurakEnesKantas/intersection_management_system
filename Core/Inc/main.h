@@ -1,71 +1,45 @@
-/* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
+#ifndef MAIN_H
+#define MAIN_H
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAIN_H
-#define __MAIN_H
+#include "stm32g0xx_hal.h"  // STM32 HAL kütüphanesi (IDE'nize göre ayarlayın)
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "gpio_config.h"
+#include "uart_config.h"
+#include "rtc.h"
+#include "timer_config.h"
+#include "traffic_lights.h"
+#include "modes.h"
+#include "commands.h"
+#include "types.h"
 
-/* Includes ------------------------------------------------------------------*/
-#include "stm32g0xx_hal.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 
-/* USER CODE END Includes */
+// Global değişkenler
+extern volatile SystemMode_t current_mode;
+extern SystemMode_t Reset_Mode(void);
+extern volatile uint32_t timerCounter;
+extern uint16_t green_delay;
+extern uint16_t red_delay;
+extern uint16_t north_delay;
+extern uint16_t south_delay;
+extern uint16_t east_delay;
+extern uint16_t west_delay;
+extern uint16_t yellow_delay;
+extern uint16_t transition_delay;
+extern uint16_t flash_delay;
+extern char rx_data[50];
+extern int8_t time_zone_offset;
 
-/* Exported types ------------------------------------------------------------*/
-/* USER CODE BEGIN ET */
+// Extern handler'lar
+extern UART_HandleTypeDef huart2;
+extern RTC_HandleTypeDef hrtc;
+extern TIM_HandleTypeDef htim1;
 
-/* USER CODE END ET */
-
-/* Exported constants --------------------------------------------------------*/
-/* USER CODE BEGIN EC */
-
-/* USER CODE END EC */
-
-/* Exported macro ------------------------------------------------------------*/
-/* USER CODE BEGIN EM */
-
-/* USER CODE END EM */
-
-/* Exported functions prototypes ---------------------------------------------*/
+// Fonksiyon prototipleri (diğer modüllerden)
+void SystemClock_Config(void);
 void Error_Handler(void);
 
-/* USER CODE BEGIN EFP */
-
-/* USER CODE END EFP */
-
-/* Private defines -----------------------------------------------------------*/
-#define MCO_Pin GPIO_PIN_0
-#define MCO_GPIO_Port GPIOF
-
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __MAIN_H */
+#endif // MAIN_H

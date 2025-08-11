@@ -31,7 +31,11 @@ Core/Src/stm32g0xx_hal_msp.o: ../Core/Src/stm32g0xx_hal_msp.c \
  ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_tim.h \
  ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_tim_ex.h \
  ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart.h \
- ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart_ex.h
+ ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart_ex.h \
+ ../Core/Inc/gpio_config.h ../Core/Inc/main.h ../Core/Inc/uart_config.h \
+ ../Core/Inc/rtc.h ../Core/Inc/timer_config.h \
+ ../Core/Inc/traffic_lights.h ../Core/Inc/modes.h ../Core/Inc/types.h \
+ ../Core/Inc/commands.h
 ../Core/Inc/main.h:
 ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal.h:
 ../Core/Inc/stm32g0xx_hal_conf.h:
@@ -66,3 +70,12 @@ Core/Src/stm32g0xx_hal_msp.o: ../Core/Src/stm32g0xx_hal_msp.c \
 ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_tim_ex.h:
 ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart.h:
 ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart_ex.h:
+../Core/Inc/gpio_config.h:
+../Core/Inc/main.h:
+../Core/Inc/uart_config.h:
+../Core/Inc/rtc.h:
+../Core/Inc/timer_config.h:
+../Core/Inc/traffic_lights.h:
+../Core/Inc/modes.h:
+../Core/Inc/types.h:
+../Core/Inc/commands.h:

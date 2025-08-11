@@ -212,18 +212,25 @@ void ProcessCommand(char* cmd) {
 	HAL_GPIO_WritePin(UART_PORT, UART_PIN, GPIO_PIN_RESET);
 
 	if (strcmp(cmd, "T?") == 0) {
-	        RTC_TimeTypeDef sTime;
-	        RTC_DateTypeDef sDate;
+	    RTC_TimeTypeDef sTime;
+	    RTC_DateTypeDef sDate;
 
-	        HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-	        HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+	    HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	    HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 
-	        snprintf(msg, sizeof(msg), "Current Time: %02d:%02d:%02d\r\nCurrent Date: %02d/%02d/%04d\r\n",
-	                sTime.Hours, sTime.Minutes, sTime.Seconds,
-	                sDate.Date, sDate.Month, sDate.Year + 2000);
+	    int hour = sTime.Hours + time_zone_offset;
+	    if (hour >= 24) hour -= 24;
+	    else if (hour < 0) hour += 24;
 
-	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-	    }
+	    snprintf(msg, sizeof(msg),
+	             "Current Time (UTC %+d): %02d:%02d:%02d\r\n"
+	             "Current Date: %02d/%02d/%04d\r\n",
+	             time_zone_offset, hour, sTime.Minutes, sTime.Seconds,
+	             sDate.Date, sDate.Month, sDate.Year + 2000);
+
+	    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	}
+
 	 else if (strcmp(cmd, "INFO") == 0) {
 		        RTC_TimeTypeDef sTime;
 		        RTC_DateTypeDef sDate;
@@ -317,39 +324,15 @@ void ProcessCommand(char* cmd) {
 	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 	    }
 	    else if (strncmp(cmd, "TZ=", 3) == 0) {
-	    	int tz = atoi(cmd + 3);
+	        int tz = atoi(cmd + 3);
 	        if (tz >= -12 && tz <= 14) {
-	            // RTC'den mevcut zamanı al
-	            RTC_TimeTypeDef sTime;
-	            HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-
-	            // Saat dilimi değişimi oranını bul
-	            int old_offset = time_zone_offset;
 	            time_zone_offset = tz;
-
-	            // Saat dilimini RTC saatine uygula
-	            int new_hour = sTime.Hours + (time_zone_offset - old_offset);
-
-	            // Saat 0-23 aralığına indir
-	            if (new_hour >= 24) new_hour -= 24;
-	            else if (new_hour < 0) new_hour += 24;
-
-	            sTime.Hours = new_hour;
-
-	            // RTC saatini yeni saatle güncelle
-	            if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) == HAL_OK) {
-	                snprintf(msg, sizeof(msg), "RTC time updated and time zone set to UTC %+d\r\n", time_zone_offset);
-	            } else {
-	                snprintf(msg, sizeof(msg), "Failed to update RTC time!\r\n");
-	            }
+	            snprintf(msg, sizeof(msg), "Time zone set to UTC %+d\r\n", time_zone_offset);
 	        } else {
 	            snprintf(msg, sizeof(msg), "Invalid time zone! Range: -12 to +14\r\n");
 	        }
 	        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 	    }
-
-
-
 	else if (strcmp(cmd, "SM") == 0) {
         current_mode = MODE_SEQUENCE;
         HAL_UART_Transmit(&huart2, (uint8_t*)"SEQUENCE MODE STARTED\r\n", strlen("SEQUENCE MODE STARTED\r\n"), HAL_MAX_DELAY);

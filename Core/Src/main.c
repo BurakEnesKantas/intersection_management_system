@@ -28,7 +28,7 @@ uint16_t yellow_delay = 2000;
 uint16_t transition_delay = 1500;
 uint16_t flash_delay = 250;
 char rx_data[50] = {0};
-int8_t time_zone_offset = 3;
+int8_t time_zone_offset = 0;
 
 // Handler'lar
 UART_HandleTypeDef huart2;

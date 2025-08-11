@@ -1,6 +1,6 @@
 #include "commands.h"
 
-// ProcessCommand implementasyonu (main.c'den kopyalayın)
+// ProcessCommand implementasyonu
 void ProcessCommand(char* cmd) {
 	char msg[700];  // UART'a yazılacak mesajlar için buffer
 	timerCounter = HAL_GetTick();

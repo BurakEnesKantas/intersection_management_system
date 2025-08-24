@@ -1,2 +1,2 @@
 ../Core/Src/uart_config.c:8:6:MX_USART2_UART_Init	8	static
-../Core/Src/uart_config.c:34:6:HAL_UART_RxCpltCallback	16	static
+../Core/Src/uart_config.c:36:6:HAL_UART_RxCpltCallback	16	static

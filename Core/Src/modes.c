@@ -4,6 +4,22 @@
 // Global değişkenler (main.h'den extern)
 volatile SystemMode_t current_mode = MODE_IDLE;
 
+void SendLedStatus(char* led, char* state) {
+    char msg[50];
+    sprintf(msg, "\r\n%s %s\r\n", led, state);
+    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+}
+
+// LED yakma fonksiyonu
+void SetLed(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, char* ledName, GPIO_PinState state) {
+    HAL_GPIO_WritePin(GPIOx, GPIO_Pin, state);
+    if(state == GPIO_PIN_SET) {
+        SendLedStatus(ledName, "ON");
+    } else {
+        SendLedStatus(ledName, "OFF");
+    }
+}
+
 // Sequences_Mode implementasyonu
 void Sequences_Mode(void) {
     while(current_mode == MODE_SEQUENCE) {
@@ -43,8 +59,8 @@ void Sequences_Mode(void) {
 
 
     	        north_red();
-    	        HAL_GPIO_WritePin(SR_PORT, SR_PIN, GPIO_PIN_SET);
-    	        HAL_GPIO_WritePin(SY_PORT, SY_PIN, GPIO_PIN_SET);
+    	        SetLed(SR_PORT, SR_PIN, "South Red", GPIO_PIN_SET);
+    	        SetLed(SY_PORT, SY_PIN, "South Yellow",GPIO_PIN_SET);
     	       	east_red();
     	       	west_red();
     	        if(1)
@@ -96,8 +112,8 @@ void Sequences_Mode(void) {
 
     	        north_red();
     	        south_red();
-    	        HAL_GPIO_WritePin(ER_PORT, ER_PIN, GPIO_PIN_SET);
-    	        HAL_GPIO_WritePin(EY_PORT, EY_PIN, GPIO_PIN_SET);
+    	        SetLed(ER_PORT, ER_PIN, "East Red",GPIO_PIN_SET);
+    	        SetLed(EY_PORT, EY_PIN, "East Yellow",GPIO_PIN_SET);
     	       	west_red();
     	       	if(1)
     	       		for(uint32_t i = 0; i < transition_delay; i += 10) {
@@ -146,8 +162,8 @@ void Sequences_Mode(void) {
     	   		north_red();
     			south_red();
     	   		east_red();
-    	   		HAL_GPIO_WritePin(WR_PORT, WR_PIN, GPIO_PIN_SET);
-    	   		HAL_GPIO_WritePin(WY_PORT, WY_PIN, GPIO_PIN_SET);
+    	   		SetLed(WR_PORT, WR_PIN, "West Red",GPIO_PIN_SET);
+    	   		SetLed(WY_PORT, WY_PIN, "West Yellow",GPIO_PIN_SET);
     	   		if(1)
     	   			for(uint32_t i = 0; i < transition_delay; i += 10) {
     	   			    HAL_Delay(10);
@@ -192,8 +208,8 @@ void Sequences_Mode(void) {
 
     	   		if(current_mode != MODE_SEQUENCE) return;
 
-    	   		HAL_GPIO_WritePin(NR_PORT, NR_PIN, GPIO_PIN_SET);
-    	   		HAL_GPIO_WritePin(NY_PORT, NY_PIN, GPIO_PIN_SET);
+    	   		SetLed(NR_PORT, NR_PIN, "North Yellow",GPIO_PIN_SET);
+    	   		SetLed(NY_PORT, NY_PIN, "North Yellow",GPIO_PIN_SET);
     	   		south_red();
     	   		east_red();
     	 		west_red();
@@ -216,10 +232,10 @@ void Flash_Mode(uint16_t duration_ms) {
     uint32_t start_time = HAL_GetTick();
     while (HAL_GetTick() - start_time < duration_ms) {
 
-        HAL_GPIO_WritePin(NY_PORT, NY_PIN, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(WY_PORT, WY_PIN, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(EY_PORT, EY_PIN, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(SY_PORT, SY_PIN, GPIO_PIN_SET);
+    	SetLed(NY_PORT, NY_PIN, "North Yellow",GPIO_PIN_SET);
+    	SetLed(WY_PORT, WY_PIN, "West Yellow",GPIO_PIN_SET);
+    	SetLed(EY_PORT, EY_PIN, "East Yellow",GPIO_PIN_SET);
+    	SetLed(SY_PORT, SY_PIN, "South Yellow",GPIO_PIN_SET);
         HAL_Delay(flash_delay);
 
 

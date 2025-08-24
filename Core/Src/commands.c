@@ -11,22 +11,42 @@ void ProcessCommand(char* cmd) {
 
 	if (strcmp(cmd, "T?") == 0) {
 	    RTC_TimeTypeDef sTime;
-	    RTC_DateTypeDef sDate;
+	    int hour;
 
 	    HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-	    HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 
-	    int hour = sTime.Hours + time_zone_offset;
-	    if (hour >= 24) hour -= 24;
-	    else if (hour < 0) hour += 24;
+
+	    if(time_zone_offset == 3){
+	    	hour = sTime.Hours;
+	    	if (hour >= 24) hour -= 24;
+	    	else if (hour < 0) hour += 24;
+	    }
+	    else if(time_zone_offset < 3 || time_zone_offset >3){
+	    	hour = sTime.Hours + time_zone_offset -3;
+	    	if (hour >= 24) hour -= 24;
+	    	else if (hour < 0) hour += 24;
+	    }
+
+
 
 	    snprintf(msg, sizeof(msg),
-	             "Current Time (UTC %+d): %02d:%02d:%02d\r\n"
-	             "Current Date: %02d/%02d/%04d\r\n",
-	             time_zone_offset, hour, sTime.Minutes, sTime.Seconds,
-	             sDate.Date, sDate.Month, sDate.Year + 2000);
+	             "Current Time (UTC %+d): %02d:%02d:%02d\r\n",
+	             time_zone_offset, hour, sTime.Minutes, sTime.Seconds);
+
 
 	    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+	}
+	else if (strcmp(cmd, "D?") == 0){
+		RTC_DateTypeDef sDate;
+
+		HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+		snprintf(msg, sizeof(msg),
+				"Current Date: %02d/%02d/%04d\r\n",
+				sDate.Date, sDate.Month, sDate.Year + 2000);
+
+		HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+
 	}
 
 	 else if (strcmp(cmd, "INFO") == 0) {
@@ -100,7 +120,7 @@ void ProcessCommand(char* cmd) {
 	    else if (strncmp(cmd, "SD=", 3) == 0) {
 	        // Format: setdate=DD/MM/YYYY
 	        int day, month, year;
-	        if (sscanf(cmd + 3, "%d/%d/%d", &day, &month, &year) == 3) {
+	        if (sscanf(cmd + 3, "%d.%d.%d", &day, &month, &year) == 3) {
 	            if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2000 && year <= 2099) {
 	                RTC_DateTypeDef sDate = {0};
 	                sDate.Date = day;
@@ -220,8 +240,17 @@ void ProcessCommand(char* cmd) {
 
 
     else if (strcmp(cmd, "FM") == 0) {
+    	All_LEDs_Off();
+    	HAL_Delay(250);
         current_mode = MODE_FLASH;
         HAL_UART_Transmit(&huart2, (uint8_t*)"FLASH MODE STARTED\r\n", strlen("FLASH MODE STARTED\r\n"), HAL_MAX_DELAY);
+    }
+    else if (strcmp(cmd, "RST Delay") == 0){
+    	north_delay = 4000;
+    	south_delay = 4000;
+    	east_delay = 4000;
+    	west_delay = 4000;
+    	HAL_UART_Transmit(&huart2, (uint8_t*)"All Delays Reset\r\n", strlen("All Delays Reset\r\n"), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "PM=", 3) == 0) {
         current_mode = MODE_PHASE;

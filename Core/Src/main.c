@@ -28,12 +28,43 @@ uint16_t yellow_delay = 2000;
 uint16_t transition_delay = 1500;
 uint16_t flash_delay = 250;
 char rx_data[50] = {0};
-int8_t time_zone_offset = 0;
+int8_t time_zone_offset = 3;
 
 // Handler'lar
 UART_HandleTypeDef huart2;
 RTC_HandleTypeDef hrtc;
 TIM_HandleTypeDef htim1;
+
+
+
+// --- Zaman yayınlama yardımcıları ---
+    static void BroadcastTimeIfSecondChanged(void)
+    {
+        static uint8_t lastSecond = 255;
+        RTC_TimeTypeDef t;
+        RTC_DateTypeDef d;
+
+        // ÖNCE time, SONRA date okunur -> shadow unlock
+        HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BIN);
+        HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BIN);
+
+        if (t.Seconds != lastSecond)
+        {
+            lastSecond = t.Seconds;
+
+            char msg[64];
+            // İstersen formatı terminalde gördüğünle birebir tut:
+            // "Current Time (UTC +%d): HH:MM:SS"
+            snprintf(msg, sizeof(msg),
+                     "Current Time (UTC %+d): %02d:%02d:%02d\r\n",
+                     time_zone_offset, t.Hours, t.Minutes, t.Seconds);
+
+            HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+        }
+    }
+
+
+
 
 int main(void) {
     HAL_Init();
@@ -48,7 +79,15 @@ int main(void) {
     HAL_UART_Transmit(&huart2, (uint8_t*)"Hazir\r\n", strlen("Hazir\r\n"), HAL_MAX_DELAY);
     HAL_UART_Receive_IT(&huart2, (uint8_t*)&uart_rx_byte, 1);
 
+
+
+
+
+
+
     while (1) {
+
+    	BroadcastTimeIfSecondChanged();
         // Zaman aşımı kontrolü
         if (current_mode != MODE_SEQUENCE && (HAL_GetTick() - timerCounter) > 80000) {
             current_mode = MODE_SEQUENCE;
@@ -84,6 +123,7 @@ int main(void) {
                     RunMultiPhase((char*)rx_data);
                     for (uint32_t i = 0; i < 1000; i += 10) {
                         HAL_Delay(10);
+                        BroadcastTimeIfSecondChanged();
                         if (cmd_ready) {
                             cmd_ready = 0;
                             ProcessCommand((char*)rx_buffer);
@@ -97,6 +137,8 @@ int main(void) {
         }
     }
 }
+
+
 
 void SystemClock_Config(void)
  {

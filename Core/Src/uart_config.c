@@ -29,6 +29,8 @@ void MX_USART2_UART_Init(void) {
     if (HAL_UARTEx_DisableFifoMode(&huart2) != HAL_OK) {
         Error_Handler();
     }
+    // Interrupt modunda dinlemeyi başlat:
+        HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1); // <-- BU SATIRI EKLEYİN
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {

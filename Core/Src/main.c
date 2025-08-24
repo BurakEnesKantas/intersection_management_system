@@ -38,30 +38,54 @@ TIM_HandleTypeDef htim1;
 
 
 // --- Zaman yayınlama yardımcıları ---
-    static void BroadcastTimeIfSecondChanged(void)
-    {
-        static uint8_t lastSecond = 255;
-        RTC_TimeTypeDef t;
-        RTC_DateTypeDef d;
 
-        // ÖNCE time, SONRA date okunur -> shadow unlock
-        HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BIN);
-        HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BIN);
+static void format_time_with_offset(RTC_TimeTypeDef *t, int8_t tz, int *hh, int *mm, int *ss)
+{
+    int h;
 
-        if (t.Seconds != lastSecond)
-        {
-            lastSecond = t.Seconds;
-
-            char msg[64];
-            // İstersen formatı terminalde gördüğünle birebir tut:
-            // "Current Time (UTC +%d): HH:MM:SS"
-            snprintf(msg, sizeof(msg),
-                     "Current Time (UTC %+d): %02d:%02d:%02d\r\n",
-                     time_zone_offset, t.Hours, t.Minutes, t.Seconds);
-
-            HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-        }
+    if (tz == 3) {
+        h = t->Hours;   // RTC zaten UTC+3'te çalışıyor
+    } else {
+        h = t->Hours + (tz - 3);  // Farkı uygula
     }
+
+    if (h < 0)   h += 24;
+    if (h >= 24) h -= 24;
+
+    *hh = h;
+    *mm = t->Minutes;
+    *ss = t->Seconds;
+}
+
+
+
+void BroadcastTimeIfSecondChanged(void)
+{
+    static uint8_t lastSecond = 255;
+    RTC_TimeTypeDef sTime;
+    RTC_DateTypeDef sDate;
+
+    HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+    HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+    if (sTime.Seconds != lastSecond)
+    {
+        lastSecond = sTime.Seconds;
+
+        int hh, mm, ss;
+        format_time_with_offset(&sTime, time_zone_offset, &hh, &mm, &ss);
+
+        char msg[64];
+        snprintf(msg, sizeof(msg),
+                 "Current Time (UTC %+d): %02d:%02d:%02d\r\n",
+                 time_zone_offset, hh, mm, ss);
+
+        HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+    }
+}
+
+
+
 
 
 

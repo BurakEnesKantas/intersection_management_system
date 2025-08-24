@@ -8,6 +8,7 @@ void SendLedStatus(char* led, char* state) {
     char msg[50];
     sprintf(msg, "\r\n%s %s\r\n", led, state);
     HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+    BroadcastTimeIfSecondChanged();
 }
 
 // LED yakma fonksiyonu

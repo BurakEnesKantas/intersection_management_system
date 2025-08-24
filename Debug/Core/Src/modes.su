@@ -1,7 +1,7 @@
 ../Core/Src/modes.c:7:6:SendLedStatus	80	static
-../Core/Src/modes.c:14:6:SetLed	32	static
-../Core/Src/modes.c:24:6:Sequences_Mode	56	static
-../Core/Src/modes.c:231:6:Flash_Mode	24	static
-../Core/Src/modes.c:248:6:RunPhaseWithTransition	24	static
-../Core/Src/modes.c:362:6:RunMultiPhase	32	static
-../Core/Src/modes.c:394:14:Reset_Mode	8	static
+../Core/Src/modes.c:15:6:SetLed	32	static
+../Core/Src/modes.c:25:6:Sequences_Mode	56	static
+../Core/Src/modes.c:232:6:Flash_Mode	24	static
+../Core/Src/modes.c:249:6:RunPhaseWithTransition	24	static
+../Core/Src/modes.c:363:6:RunMultiPhase	32	static
+../Core/Src/modes.c:395:14:Reset_Mode	8	static

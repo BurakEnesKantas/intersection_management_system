@@ -2,6 +2,7 @@
 #define MODES_H
 
 #include "main.h"
+#include "modes.h"
 
 // Fonksiyon prototipleri
 void Sequences_Mode(void);
@@ -93,7 +94,6 @@ void BroadcastTimeIfSecondChanged(void)
 int main(void) {
     HAL_Init();
     SystemClock_Config();
-
     MX_GPIO_Init();
     MX_USART2_UART_Init();
     MX_RTC_Init();
@@ -103,15 +103,13 @@ int main(void) {
     HAL_UART_Transmit(&huart2, (uint8_t*)"Hazir\r\n", strlen("Hazir\r\n"), HAL_MAX_DELAY);
     HAL_UART_Receive_IT(&huart2, (uint8_t*)&uart_rx_byte, 1);
 
-
-
-
-
-
+    initLeds();
 
     while (1) {
 
     	BroadcastTimeIfSecondChanged();
+
+    	UpdateLedStatusLog();
         // Zaman aşımı kontrolü
         if (current_mode != MODE_SEQUENCE && (HAL_GetTick() - timerCounter) > 80000) {
             current_mode = MODE_SEQUENCE;

@@ -1,7 +1,10 @@
-../Core/Src/modes.c:7:6:SendLedStatus	1
-../Core/Src/modes.c:15:6:SetLed	2
-../Core/Src/modes.c:25:6:Sequences_Mode	50
-../Core/Src/modes.c:232:6:Flash_Mode	2
-../Core/Src/modes.c:249:6:RunPhaseWithTransition	24
-../Core/Src/modes.c:363:6:RunMultiPhase	7
-../Core/Src/modes.c:395:14:Reset_Mode	1
+../Core/Src/modes.c:30:6:initLeds	2
+../Core/Src/modes.c:51:6:SendLedStatus	1
+../Core/Src/modes.c:58:6:SetLed	6
+../Core/Src/modes.c:75:6:CheckAllOffLog	5
+../Core/Src/modes.c:89:6:UpdateLedStatusLog	9
+../Core/Src/modes.c:146:6:Sequences_Mode	39
+../Core/Src/modes.c:309:6:Flash_Mode	2
+../Core/Src/modes.c:326:6:RunPhaseWithTransition	24
+../Core/Src/modes.c:440:6:RunMultiPhase	7
+../Core/Src/modes.c:472:14:Reset_Mode	1

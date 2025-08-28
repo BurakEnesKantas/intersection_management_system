@@ -250,6 +250,7 @@ void ProcessCommand(char* cmd) {
     	south_delay = 4000;
     	east_delay = 4000;
     	west_delay = 4000;
+    	transition_delay = 1500;
     	HAL_UART_Transmit(&huart2, (uint8_t*)"All Delays Reset\r\n", strlen("All Delays Reset\r\n"), HAL_MAX_DELAY);
     }
     else if (strncmp(cmd, "PM=", 3) == 0) {
